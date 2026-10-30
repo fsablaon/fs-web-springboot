@@ -13,7 +13,7 @@
 
     <artifactId>facade</artifactId>
     <name>facade</name>
-    <description>Facade backend: REST API (/api/hello), OpenTelemetry; serves the React frontend. The visit counter lives in the visitor backend.</description>
+    <description>Facade backend: REST API (/api/hello), OpenTelemetry; serves the React frontend. Each /api/hello call records a visit in the visitor backend.</description>
 
     <dependencies>
         <!-- React app (static/**), served by WebConfig -->
@@ -27,6 +27,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- RestClient (auto-configured RestClient.Builder with tracing): facade -> visitor calls -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
         <!-- Actuator: health, info and metrics endpoints -->
