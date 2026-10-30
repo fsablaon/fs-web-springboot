@@ -8,18 +8,18 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Maven modules** (multi-module build, root `pom.xml` is the parent and aggregator, `org.fsweb:fs-web-parent`, packaging `pom`):
 
-| Module          | Path               | ArtifactId        | Purpose                                                              |
-|-----------------|--------------------|-------------------|----------------------------------------------------------------------|
-| Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                          |
-| Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)               |
-| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`; serves the frontend jar   |
-| Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey   |
+| Module          | Path               | ArtifactId        | Purpose                                                                             |
+|-----------------|--------------------|-------------------|-------------------------------------------------------------------------------------|
+| Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                                         |
+| Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)                              |
+| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`; serves the frontend jar; calls `visitor` |
+| Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey                  |
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080) and `backends/visitor` (base package `org.fsweb.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`). Shared settings:
+**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080) and `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`). Each `/api/hello` call in facade records a visit through `VisitorClient` (`POST {facade.visitor.base-url}/api/visits`, RestClient; design in `docs/008-hello-counts-visits.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
 - **Java Version**: 25
 - **Spring Boot Version**: 4.1.2
@@ -90,18 +90,21 @@ fs-web-springboot/
 │   │       ├── main/
 │   │       │   ├── java/org/fsweb/facade/
 │   │       │   │   ├── FacadeApplication.java   # Main Spring Boot application
+│   │       │   │   ├── client/                  # VisitorClient, VisitorProperties, VisitCount (calls the visitor backend)
 │   │       │   │   ├── config/                  # Configuration classes
 │   │       │   │   │   ├── WebConfig.java       # SPA routing configuration
+│   │       │   │   │   ├── VisitorClientConfig.java  # RestClient bean for the visitor backend
 │   │       │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
 │   │       │   │   └── controller/              # REST API controllers
 │   │       │   │       └── HelloController.java
 │   │       │   └── resources/
-│   │       │       ├── application.yml          # Backend configuration
-│   │       │       ├── application-prod.yml     # Production OTLP settings (env vars)
+│   │       │       ├── application.yml          # Backend configuration (facade.visitor.base-url, timeouts)
+│   │       │       ├── application-prod.yml     # Production visitor URL and OTLP settings (env vars)
 │   │       │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
 │   │       └── test/
 │   │           └── java/org/fsweb/facade/
-│   │               └── FacadeApplicationTests.java
+│   │               ├── FacadeApplicationTests.java
+│   │               └── controller/HelloControllerTests.java  # MockRestServiceServer as the visitor backend
 │   └── visitor/                         # Visitor backend module (artifactId visitor, port 8081)
 │       ├── pom.xml
 │       └── src/
@@ -172,7 +175,7 @@ fs-web-springboot/
 - All backend API endpoints are prefixed with `/api`
 - Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
 - This works in both dev (proxied) and production (same origin)
-- Endpoint ownership: `/api/visits` → `visitor` (8081); everything else → `facade` (8080). In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of both JARs must route `/api/visits` to the visitor backend.
+- Endpoint ownership: `/api/visits` → `visitor` (8081); everything else → `facade` (8080). Backend-to-backend calls (facade → visitor) use the URL in `facade.visitor.base-url` (`VISITOR_URL` in the `prod` profile), not the reverse proxy. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of both JARs must route `/api/visits` to the visitor backend.
 
 
 ## Custom Conventions

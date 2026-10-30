@@ -41,7 +41,7 @@ For development with hot reload:
 ./mvnw install -DskipTests                # first time only: installs the parent POM and builds the frontend jar
 ./mvnw spring-boot:run -pl backends/facade
 ```
-The facade backend (`/api/hello`, serves the UI in production) runs on `http://localhost:8080`
+The facade backend (`/api/hello`, serves the UI in production) runs on `http://localhost:8080`. Each `/api/hello` call records a visit in the visitor backend; if the visitor backend is not running, the greeting is still returned and a warning is logged.
 
 2. **Start the visitor backend** (Terminal 2):
 ```bash
@@ -90,10 +90,10 @@ java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar    # /api/visits on
 
 Access the application at `http://localhost:8080`. The UI calls `/api/visits` on its own origin, so outside the Vite dev server a reverse proxy (nginx, an ingress, an API gateway) has to route `/api/visits` to the visitor backend and everything else to the facade backend.
 
-The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint (and Redis for the visitor backend):
+The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the visitor backend URL for the facade backend (`VISITOR_URL`, default `http://localhost:8081`) and Redis for the visitor backend:
 
 ```bash
-OTLP_ENDPOINT=http://collector:4318 \
+VISITOR_URL=http://visitor.example:8081 OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 REDIS_HOST=valkey.example OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
@@ -138,15 +138,15 @@ fs-web-springboot/
 | Facade backend  | `backends/facade`  | `facade`          | 8080 | Executable Spring Boot JAR: `/api/hello`, serves the frontend |
 | Visitor backend | `backends/visitor` | `visitor`         | 8081 | Executable Spring Boot JAR: `/api/visits` (Valkey counter)    |
 
-To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md).
+To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md) and the facade → visitor call in [docs/008-hello-counts-visits.md](docs/008-hello-counts-visits.md).
 
 ## API Endpoints
 
-| Endpoint                       | Backend   | Description                                                  |
-|--------------------------------|-----------|--------------------------------------------------------------|
-| `GET /api/hello?name=YourName` | `facade`  | Returns a greeting message                                   |
-| `GET /api/visits`              | `visitor` | Returns the current visit count from Valkey (`{"count": n}`) |
-| `POST /api/visits`             | `visitor` | Increments the visit count and returns the new value         |
+| Endpoint                       | Backend   | Description                                                                                        |
+|--------------------------------|-----------|----------------------------------------------------------------------------------------------------|
+| `GET /api/hello?name=YourName` | `facade`  | Returns a greeting message; also records a visit (calls `POST /api/visits` on the visitor backend) |
+| `GET /api/visits`              | `visitor` | Returns the current visit count from Valkey (`{"count": n}`)                                       |
+| `POST /api/visits`             | `visitor` | Increments the visit count and returns the new value                                               |
 
 ## Running Tests
 
