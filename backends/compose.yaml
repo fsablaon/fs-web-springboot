@@ -2,6 +2,11 @@
 # Started automatically by spring-boot-docker-compose when running `mvn spring-boot:run`.
 # Spring Boot reads the mapped ports from Docker and creates the Redis and OTLP
 # connections itself, so no host/port properties are needed in application.yml.
+
+# Keeps the Compose project name (and container names) the same as when this file
+# was in the project root, so existing containers are reused.
+name: fs-web-springboot
+
 services:
   redis:
     image: redis:8.10-alpine

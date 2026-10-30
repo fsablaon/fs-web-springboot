@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.fsweb</groupId>
+        <artifactId>fs-web-parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <!-- Parent and aggregator for the Spring Boot backends: build settings and dependencies
+         every backend shares. Each backend module adds its own starters. -->
+    <artifactId>fs-web-backends</artifactId>
+    <packaging>pom</packaging>
+    <name>fs-web-backends</name>
+    <description>Parent POM for the Spring Boot backends</description>
+
+    <modules>
+        <module>demo</module>
+    </modules>
+
+    <properties>
+        <!-- Must match the OpenTelemetry SDK managed by Spring Boot (4.1.2 -> OTel 1.62.0 -> instrumentation 2.28.x).
+             A newer appender pulls in an opentelemetry-api-incubator that the older SDK cannot use (NoClassDefFoundError: ExtendedAttributes). -->
+        <opentelemetry-logback-appender.version>2.28.1-alpha</opentelemetry-logback-appender.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Built React app; add to a backend that serves the UI -->
+            <dependency>
+                <groupId>org.fsweb</groupId>
+                <artifactId>fs-web-frontend</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Sends Logback log events to the OpenTelemetry SDK (Loki in LGTM) -->
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+                <version>${opentelemetry-logback-appender.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Inherited by every backend -->
+    <dependencies>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Spring Boot Starter Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Backends declare this plugin to get an executable JAR.
+                     spring-boot:run starts the app in the project root (the folder with .mvn), the same
+                     working directory IntelliJ uses, so spring.docker.compose.file: backends/compose.yaml
+                     resolves the same way for both. -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <workingDirectory>${maven.multiModuleProjectDirectory}</workingDirectory>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- JDK 23+ no longer discovers annotation processors on the classpath; register Lombok explicitly -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- No application in this aggregator: spring-boot:run skips it.
+                 inherited=false keeps the skip out of the backend modules. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

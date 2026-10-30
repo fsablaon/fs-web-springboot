@@ -66,7 +66,7 @@ Running npm directly in `frontend/` is unchanged.
 
 ## Runtime fix: OpenTelemetry log export crash
 
-`opentelemetry-logback-appender-1.0` was moved from 2.33.1-alpha to 2.28.1-alpha so all OpenTelemetry jars match the 1.62.0 SDK that Spring Boot 4.1.2 manages. Details are in `docs/dependency-update-2026-10.md`.
+`opentelemetry-logback-appender-1.0` was moved from 2.33.1-alpha to 2.28.1-alpha so all OpenTelemetry jars match the 1.62.0 SDK that Spring Boot 4.1.2 manages. Details are in `docs/002-dependency-update-2026-10.md`.
 
 ## Notes
 

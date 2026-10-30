@@ -1,0 +1,26 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "network": {
+      "allowedDomains": [
+        "repo.maven.apache.org",
+        "nodejs.org",
+        "registry.npmjs.org"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw:*)",
+      "Bash(mvnw.cmd:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)"
+    ]
+  }
+}

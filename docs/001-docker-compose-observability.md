@@ -2,6 +2,8 @@
 
 Status: implemented (2026-10-30)
 
+> Update: the project is now a multi-module build and `compose.yaml` lives in `backends/compose.yaml`. See `docs/004-multi-module-backends.md`.
+
 ## Goal
 
 Run the app's local dependencies with Docker Compose, managed by Spring Boot's

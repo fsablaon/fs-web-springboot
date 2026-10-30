@@ -5,8 +5,11 @@ spring:
     compose:
       # Start compose.yaml services if they are not running, and leave them running
       # when the app stops (faster restarts, telemetry data is kept).
-      # Stop them with: docker compose down
+      # Stop them with: docker compose -p fs-web-springboot down
       lifecycle-management: start-only
+      # Shared by all backends. Relative to the working directory, which is the project
+      # root for ./mvnw spring-boot:run (see backends/pom.xml) and for IntelliJ.
+      file: backends/compose.yaml
 
 server:
   port: 8080
