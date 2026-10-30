@@ -1,7 +1,7 @@
 # Production profile: activate with --spring.profiles.active=prod
 # Docker Compose support is not included in the packaged JAR, so the visitor URL and
 # OTLP endpoint must be set explicitly (environment variables shown below).
-fsweb:
+facade:
   visitor:
     base-url: ${VISITOR_URL:http://localhost:8081}
 

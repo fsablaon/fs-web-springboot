@@ -14,7 +14,7 @@ spring:
 server:
   port: 8080
 
-fsweb:
+facade:
   visitor:
     # Visitor backend; each /api/hello call POSTs to <base-url>/api/visits
     base-url: http://localhost:8081

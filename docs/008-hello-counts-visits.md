@@ -15,7 +15,7 @@ browser ──GET /api/hello──▶ facade (8080) ──POST /api/visits──
 | Step | What happens                                                                                                                              |
 |------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | 1    | `HelloController.hello()` logs the call and calls `VisitorClient.recordVisit()`                                                           |
-| 2    | `VisitorClient` sends `POST {fsweb.visitor.base-url}/api/visits` with a `RestClient` and reads `{"count": n}`                             |
+| 2    | `VisitorClient` sends `POST {facade.visitor.base-url}/api/visits` with a `RestClient` and reads `{"count": n}`                            |
 | 3    | The greeting is returned. The response body is unchanged (`Hello, <name>!`), so the frontend needs no change                              |
 | 4    | If the visitor backend is down, slow or returns an error, `recordVisit()` logs a `WARN` and returns empty; `/api/hello` still answers 200 |
 
@@ -26,20 +26,20 @@ The call is synchronous: `/api/hello` waits for the visitor backend, at most the
 | Choice                                          | Reason                                                                                                                                                              |
 |-------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `RestClient` (`spring-boot-starter-restclient`) | Boot 4 moved RestClient auto-configuration out of the web starter. The auto-configured `RestClient.Builder` has observation applied, so trace context is propagated |
-| Direct backend-to-backend URL                   | The facade calls the visitor backend at `fsweb.visitor.base-url`, not through the Vite proxy or the production reverse proxy                                        |
+| Direct backend-to-backend URL                   | The facade calls the visitor backend at `facade.visitor.base-url`, not through the Vite proxy or the production reverse proxy                                       |
 | Failure does not fail `/api/hello`              | The counter is secondary to the greeting; a missing visit is logged instead of returning 5xx                                                                        |
 | Short timeouts                                  | `/api/hello` waits for the call; 1 s connect / 2 s read bound the extra latency                                                                                     |
 | Facade has its own `VisitCount` record          | No shared module between backends yet; the record is one field and matches the visitor's JSON                                                                       |
 
 ## Configuration (facade)
 
-| Property                        | Default (`application.yml`) | `prod` profile                         |
-|---------------------------------|-----------------------------|----------------------------------------|
-| `fsweb.visitor.base-url`        | `http://localhost:8081`     | `${VISITOR_URL:http://localhost:8081}` |
-| `fsweb.visitor.connect-timeout` | `1s`                        | inherited                              |
-| `fsweb.visitor.read-timeout`    | `2s`                        | inherited                              |
+| Property                         | Default (`application.yml`) | `prod` profile                         |
+|----------------------------------|-----------------------------|----------------------------------------|
+| `facade.visitor.base-url`        | `http://localhost:8081`     | `${VISITOR_URL:http://localhost:8081}` |
+| `facade.visitor.connect-timeout` | `1s`                        | inherited                              |
+| `facade.visitor.read-timeout`    | `2s`                        | inherited                              |
 
-Bound to the `VisitorProperties` record (`@ConfigurationProperties("fsweb.visitor")`).
+Bound to the `VisitorProperties` record (`@ConfigurationProperties("facade.visitor")`).
 
 ## Files changed
 
@@ -47,12 +47,12 @@ Bound to the `VisitorProperties` record (`@ConfigurationProperties("fsweb.visito
 |---------------------------------------------------------------------------------------|------------------------------------------------------------------------|
 | `backends/facade/pom.xml`                                                             | Added `spring-boot-starter-restclient`; description updated            |
 | `backends/facade/src/main/java/org/fsweb/facade/client/VisitorClient.java`            | New: `recordVisit()` → `POST /api/visits`, returns `OptionalLong`      |
-| `backends/facade/src/main/java/org/fsweb/facade/client/VisitorProperties.java`        | New: `fsweb.visitor.*` (base URL, timeouts)                            |
+| `backends/facade/src/main/java/org/fsweb/facade/client/VisitorProperties.java`        | New: `facade.visitor.*` (base URL, timeouts)                           |
 | `backends/facade/src/main/java/org/fsweb/facade/client/VisitCount.java`               | New: response record `{"count": n}`                                    |
 | `backends/facade/src/main/java/org/fsweb/facade/config/VisitorClientConfig.java`      | New: `visitorRestClient` bean (Boot builder + base URL + timeouts)     |
 | `backends/facade/src/main/java/org/fsweb/facade/controller/HelloController.java`      | Calls `visitorClient.recordVisit()` on each request                    |
-| `backends/facade/src/main/resources/application.yml`                                  | `fsweb.visitor` block                                                  |
-| `backends/facade/src/main/resources/application-prod.yml`                             | `fsweb.visitor.base-url: ${VISITOR_URL:...}`                           |
+| `backends/facade/src/main/resources/application.yml`                                  | `facade.visitor` block                                                 |
+| `backends/facade/src/main/resources/application-prod.yml`                             | `facade.visitor.base-url: ${VISITOR_URL:...}`                          |
 | `backends/facade/src/test/java/org/fsweb/facade/controller/HelloControllerTests.java` | New: 4 tests with `MockRestServiceServer` as the visitor backend       |
 | `README.md`, `CLAUDE.md`                                                              | Endpoint table, `VISITOR_URL`, structure tree, backend-to-backend note |
 | `docs/008-hello-counts-visits.md`                                                     | This file                                                              |
