@@ -14,12 +14,13 @@ This is a full-stack web application with Spring Boot backend and React frontend
 | Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)                              |
 | Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`; serves the frontend jar; calls `visitor` |
 | Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey                  |
+| Stocks backend  | `backends/stocks`  | `stocks`          | Spring Boot app (port 8082): `/api/stocks` in-memory stock list                     |
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080) and `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`). Each `/api/hello` call in facade records a visit through `VisitorClient` (`POST {facade.visitor.base-url}/api/visits`, RestClient; design in `docs/008-hello-counts-visits.md`). Shared settings:
+**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade records a visit through `VisitorClient` (`POST {facade.visitor.base-url}/api/visits`, RestClient; design in `docs/008-hello-counts-visits.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
 - **Java Version**: 25
 - **Spring Boot Version**: 4.1.2
@@ -38,7 +39,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out), `lgtm` (Grafana OTel LGTM stack), `kafka` (KRaft, fixed port 9092), `mysql` (MySQL 9.7 LTS, db/user/password `fsweb`), `postgres` (PostgreSQL 18, db/user/password `fsweb`) and `dynamodb` (DynamoDB Local, fixed port 8000, `-sharedDb -inMemory`)
 - `mysql` and `postgres` both produce `JdbcConnectionDetails`; a backend with a DataSource must label the one it does not use with `org.springframework.boot.ignore: true` (or Boot fails with two candidates). DynamoDB Local has no Boot service connection: configure the endpoint `http://localhost:8000` explicitly. Details in `docs/008-mysql-postgres-dynamodb-compose.md`
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
-- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/<name>` (both backends share the containers) and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
+- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/<name>` (all backends share the containers) and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
@@ -51,19 +52,20 @@ For development with hot reload:
 1. **First time only**: `./mvnw install -DskipTests` (installs the parent POM and builds the `fs-web-frontend` jar the backend depends on)
 2. **Start facade backend**: `./mvnw spring-boot:run -pl backends/facade` (runs on port 8080)
 3. **Start visitor backend** (separate terminal): `./mvnw spring-boot:run -pl backends/visitor` (runs on port 8081)
-4. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
-5. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081 and other `/api/*` calls to 8080)
+4. **Start stocks backend** (separate terminal): `./mvnw spring-boot:run -pl backends/stocks` (runs on port 8082)
+5. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
+6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080)
 
 ### Production Build
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
-- **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar` and `java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar`
-- Access at `http://localhost:8080`; outside the Vite dev server a reverse proxy must route `/api/visits` to 8081
+- **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar`, `java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar` and `java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar`
+- Access at `http://localhost:8080`; outside the Vite dev server a reverse proxy must route `/api/visits` to 8081 and `/api/stocks` to 8082
 
 ### Backend Only (Maven Wrapper)
 Run from the project root. `-pl backends/<name>` selects one module; add `-am` to also build the modules it depends on.
 - **Build all modules**: `./mvnw clean install`
 - **Build one backend**: `./mvnw clean install -pl backends/facade -am`
-- **Run application**: `./mvnw spring-boot:run -pl backends/facade` or `./mvnw spring-boot:run -pl backends/visitor`
+- **Run application**: `./mvnw spring-boot:run -pl backends/facade`, `./mvnw spring-boot:run -pl backends/visitor` or `./mvnw spring-boot:run -pl backends/stocks`
 - **Run tests (all modules)**: `./mvnw test`
 - **Run single test**: `./mvnw test -pl backends/facade -Dtest=ClassName#methodName`
 - **Package**: `./mvnw package`
@@ -106,25 +108,47 @@ fs-web-springboot/
 │   │           └── java/org/fsweb/facade/
 │   │               ├── FacadeApplicationTests.java
 │   │               └── controller/HelloControllerTests.java  # MockRestServiceServer as the visitor backend
-│   └── visitor/                         # Visitor backend module (artifactId visitor, port 8081)
+│   ├── visitor/                         # Visitor backend module (artifactId visitor, port 8081)
+│   │   ├── pom.xml
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/org/fsweb/visitor/
+│   │       │   │   ├── VisitorApplication.java  # Main Spring Boot application
+│   │       │   │   ├── config/
+│   │       │   │   │   └── OpenTelemetryLogbackConfig.java
+│   │       │   │   ├── controller/
+│   │       │   │   │   └── VisitController.java # /api/visits (Valkey counter)
+│   │       │   │   ├── dto/                     # API records (VisitCount)
+│   │       │   │   └── service/                 # VisitCounterService (StringRedisTemplate)
+│   │       │   └── resources/
+│   │       │       ├── application.yml          # Port 8081, Docker Compose file
+│   │       │       ├── application-prod.yml     # Production Redis/OTLP settings (env vars)
+│   │       │       └── logback-spring.xml
+│   │       └── test/
+│   │           └── java/org/fsweb/visitor/
+│   │               └── VisitorApplicationTests.java
+│   └── stocks/                          # Stocks backend module (artifactId stocks, port 8082)
 │       ├── pom.xml
 │       └── src/
 │           ├── main/
-│           │   ├── java/org/fsweb/visitor/
-│           │   │   ├── VisitorApplication.java  # Main Spring Boot application
+│           │   ├── java/org/fsweb/stocks/
+│           │   │   ├── StocksApplication.java   # Main Spring Boot application
 │           │   │   ├── config/
 │           │   │   │   └── OpenTelemetryLogbackConfig.java
 │           │   │   ├── controller/
-│           │   │   │   └── VisitController.java # /api/visits (Valkey counter)
-│           │   │   ├── dto/                     # API records (VisitCount)
-│           │   │   └── service/                 # VisitCounterService (StringRedisTemplate)
+│           │   │   │   └── StockController.java # /api/stocks, /api/stocks/{symbol}
+│           │   │   ├── dto/                     # API records (Stock)
+│           │   │   ├── exception/               # StockNotFoundException, GlobalExceptionHandler (404 ProblemDetail)
+│           │   │   └── service/                 # StockService (in-memory map; swap for a real data source)
 │           │   └── resources/
-│           │       ├── application.yml          # Port 8081, Docker Compose file
-│           │       ├── application-prod.yml     # Production Redis/OTLP settings (env vars)
+│           │       ├── application.yml          # Port 8082, Docker Compose file
+│           │       ├── application-prod.yml     # Production OTLP settings (env vars)
 │           │       └── logback-spring.xml
 │           └── test/
-│               └── java/org/fsweb/visitor/
-│                   └── VisitorApplicationTests.java
+│               └── java/org/fsweb/stocks/
+│                   ├── StocksApplicationTests.java
+│                   ├── controller/StockControllerTest.java   # HTTP tests on a random port
+│                   └── service/StockServiceTest.java
 ├── frontend/                            # Frontend module (artifactId fs-web-frontend)
 │   ├── pom.xml                          # Runs npm install / npm run build via frontend-maven-plugin
 │   ├── src/
@@ -176,7 +200,7 @@ fs-web-springboot/
 - All backend API endpoints are prefixed with `/api`
 - Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
 - This works in both dev (proxied) and production (same origin)
-- Endpoint ownership: `/api/visits` → `visitor` (8081); everything else → `facade` (8080). Backend-to-backend calls (facade → visitor) use the URL in `facade.visitor.base-url` (`VISITOR_URL` in the `prod` profile), not the reverse proxy. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of both JARs must route `/api/visits` to the visitor backend.
+- Endpoint ownership: `/api/visits` → `visitor` (8081); `/api/stocks` → `stocks` (8082); everything else → `facade` (8080). Backend-to-backend calls (facade → visitor) use the URL in `facade.visitor.base-url` (`VISITOR_URL` in the `prod` profile), not the reverse proxy. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of the JARs must route `/api/visits` to the visitor backend and `/api/stocks` to the stocks backend.
 
 
 ## Custom Conventions

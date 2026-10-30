@@ -49,7 +49,13 @@ The facade backend (`/api/hello`, serves the UI in production) runs on `http://l
 ```
 The visitor backend (`/api/visits`) runs on `http://localhost:8081`
 
-3. **Start the frontend** (Terminal 3):
+3. **Start the stocks backend** (Terminal 3):
+```bash
+./mvnw spring-boot:run -pl backends/stocks
+```
+The stocks backend (`/api/stocks`) runs on `http://localhost:8082`
+
+4. **Start the frontend** (Terminal 4):
 ```bash
 cd frontend
 npm install  # Only needed first time
@@ -57,9 +63,9 @@ npm run dev
 ```
 The frontend will run on `http://localhost:3000`
 
-4. **Access the application** at `http://localhost:3000`
+5. **Access the application** at `http://localhost:3000`
 
-The Vite dev server proxies `/api/visits` to the visitor backend (8081) and every other `/api/*` request to the facade backend (8080), giving you hot reload for both frontend and backend changes.
+The Vite dev server proxies `/api/visits` to the visitor backend (8081), `/api/stocks` to the stocks backend (8082) and every other `/api/*` request to the facade backend (8080), giving you hot reload for both frontend and backend changes.
 
 ### Local Services (Docker Compose)
 
@@ -74,13 +80,13 @@ The Vite dev server proxies `/api/visits` to the visitor backend (8081) and ever
 | `postgres` | `postgres:18.6-alpine`        | random    | PostgreSQL (database `fsweb`, user `fsweb`/`fsweb`)                             |
 | `dynamodb` | `amazon/dynamodb-local:3.3.2` | 8000      | Amazon DynamoDB Local (`-sharedDb -inMemory`), endpoint `http://localhost:8000` |
 
-`./mvnw spring-boot:run -pl backends/facade` (or `-pl backends/visitor`) starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. Both backends share the same containers; the first one started creates them. The containers keep running after the app stops (`lifecycle-management: start-only`).
+`./mvnw spring-boot:run -pl backends/facade` (or `-pl backends/visitor`, `-pl backends/stocks`) starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. All backends share the same containers; the first one started creates them. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
-- **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics; service names `facade` and `visitor`)
+- **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics; service names `facade`, `visitor` and `stocks`)
 - **Stop the containers:** `docker compose -p fs-web-springboot down` (add `-v` to also delete the MySQL/PostgreSQL data volumes)
 - **Random host ports** (for a DB client): `docker compose -p fs-web-springboot port mysql 3306`, `... port postgres 5432`
 - No backend uses `mysql`, `postgres` or `dynamodb` yet; they are ready for the next service. See [docs/008-mysql-postgres-dynamodb-compose.md](docs/008-mysql-postgres-dynamodb-compose.md) for how a backend connects to them.
-- **Actuator:** `http://localhost:8080/actuator/health` (facade), `http://localhost:8081/actuator/health` (visitor)
+- **Actuator:** `http://localhost:8080/actuator/health` (facade), `http://localhost:8081/actuator/health` (visitor), `http://localhost:8082/actuator/health` (stocks)
 
 See [docs/001-docker-compose-observability.md](docs/001-docker-compose-observability.md) for the full design.
 
@@ -92,9 +98,10 @@ Build everything, then run one JAR per backend:
 ./mvnw clean install
 java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar      # UI + /api/hello on 8080
 java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar    # /api/visits on 8081
+java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar      # /api/stocks on 8082
 ```
 
-Access the application at `http://localhost:8080`. The UI calls `/api/visits` on its own origin, so outside the Vite dev server a reverse proxy (nginx, an ingress, an API gateway) has to route `/api/visits` to the visitor backend and everything else to the facade backend.
+Access the application at `http://localhost:8080`. The UI calls `/api/visits` and `/api/stocks` on its own origin, so outside the Vite dev server a reverse proxy (nginx, an ingress, an API gateway) has to route `/api/visits` to the visitor backend, `/api/stocks` to the stocks backend and everything else to the facade backend.
 
 The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the visitor backend URL for the facade backend (`VISITOR_URL`, default `http://localhost:8081`) and Redis for the visitor backend:
 
@@ -103,13 +110,15 @@ VISITOR_URL=http://visitor.example:8081 OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 REDIS_HOST=valkey.example OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+OTLP_ENDPOINT=http://collector:4318 \
+  java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 The Maven build automatically:
 1. Installs Node.js and npm (via frontend-maven-plugin, in the `frontend` module)
 2. Installs frontend dependencies
 3. Builds the React app and packages it as the `fs-web-frontend` jar
-4. Builds each backend (`facade`, `visitor`); the facade backend JAR includes the frontend jar
+4. Builds each backend (`facade`, `visitor`, `stocks`); the facade backend JAR includes the frontend jar
 
 ## Project Structure
 
@@ -123,9 +132,13 @@ fs-web-springboot/
 │   │   ├── pom.xml
 │   │   ├── src/main/java/       # Spring Boot backend code
 │   │   └── src/main/resources/  # Backend configuration
-│   └── visitor/           # Visitor backend module (/api/visits, port 8081)
+│   ├── visitor/           # Visitor backend module (/api/visits, port 8081)
+│   │   ├── pom.xml
+│   │   ├── src/main/java/       # Visit counter (Valkey/Redis)
+│   │   └── src/main/resources/  # Backend configuration
+│   └── stocks/            # Stocks backend module (/api/stocks, port 8082)
 │       ├── pom.xml
-│       ├── src/main/java/       # Visit counter (Valkey/Redis)
+│       ├── src/main/java/       # In-memory stock list
 │       └── src/main/resources/  # Backend configuration
 ├── frontend/              # React frontend module
 │   ├── pom.xml            # Builds the React app into a jar of static resources
@@ -143,8 +156,9 @@ fs-web-springboot/
 | Backends parent | `backends/`        | `fs-web-backends` |      | POM only                                                      |
 | Facade backend  | `backends/facade`  | `facade`          | 8080 | Executable Spring Boot JAR: `/api/hello`, serves the frontend |
 | Visitor backend | `backends/visitor` | `visitor`         | 8081 | Executable Spring Boot JAR: `/api/visits` (Valkey counter)    |
+| Stocks backend  | `backends/stocks`  | `stocks`          | 8082 | Executable Spring Boot JAR: `/api/stocks` (in-memory list)    |
 
-To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md) and the facade → visitor call in [docs/008-hello-counts-visits.md](docs/008-hello-counts-visits.md).
+To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md), the facade → visitor call in [docs/008-hello-counts-visits.md](docs/008-hello-counts-visits.md) and the stocks backend in [docs/009-stocks-service.md](docs/009-stocks-service.md).
 
 ## API Endpoints
 
@@ -153,6 +167,8 @@ To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-m
 | `GET /api/hello?name=YourName` | `facade`  | Returns a greeting message; also records a visit (calls `POST /api/visits` on the visitor backend) |
 | `GET /api/visits`              | `visitor` | Returns the current visit count from Valkey (`{"count": n}`)                                       |
 | `POST /api/visits`             | `visitor` | Increments the visit count and returns the new value                                               |
+| `GET /api/stocks`              | `stocks`  | Returns all stocks (`[{"symbol","name","price"}, …]`)                                              |
+| `GET /api/stocks/{symbol}`     | `stocks`  | Returns one stock by symbol (case-insensitive); 404 if unknown                                     |
 
 ## Running Tests
 
@@ -174,6 +190,7 @@ npm run lint
 ```bash
 ./mvnw spring-boot:run -pl backends/facade    # Run the facade backend (8080)
 ./mvnw spring-boot:run -pl backends/visitor   # Run the visitor backend (8081)
+./mvnw spring-boot:run -pl backends/stocks    # Run the stocks backend (8082)
 ./mvnw install -pl backends/facade -am        # Build one backend and the modules it depends on
 ./mvnw clean                                  # Clean build artifacts (all modules)
 ./mvnw package                                # Package all modules

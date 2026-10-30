@@ -1,0 +1,24 @@
+# Production profile: activate with --spring.profiles.active=prod
+# Docker Compose support is not included in the packaged JAR, so the OTLP
+# endpoint must be set explicitly (environment variables shown below).
+management:
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+
+logging:
+  level:
+    org.fsweb.stocks: INFO
