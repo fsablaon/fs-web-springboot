@@ -65,15 +65,21 @@ The Vite dev server proxies `/api/visits` to the visitor backend (8081) and ever
 
 `backends/compose.yaml` defines the services used in development, shared by all backends:
 
-| Service  | Image                        | Purpose                                                                        |
-|----------|------------------------------|--------------------------------------------------------------------------------|
-| `valkey` | `valkey/valkey:9.1.3-alpine` | Visit counter storage (Redis-compatible; the `redis` service is commented out) |
-| `lgtm`   | `grafana/otel-lgtm:0.32.1`   | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector          |
+| Service    | Image                         | Host port | Purpose                                                                         |
+|------------|-------------------------------|-----------|---------------------------------------------------------------------------------|
+| `valkey`   | `valkey/valkey:9.1.3-alpine`  | random    | Visit counter storage (Redis-compatible; the `redis` service is commented out)  |
+| `lgtm`     | `grafana/otel-lgtm:0.32.1`    | 3001      | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector           |
+| `kafka`    | `apache/kafka:4.4.0`          | 9092      | Single-node Kafka (KRaft)                                                       |
+| `mysql`    | `mysql:9.7.4`                 | random    | MySQL (database `fsweb`, user `fsweb`/`fsweb`, root password `root`)            |
+| `postgres` | `postgres:18.6-alpine`        | random    | PostgreSQL (database `fsweb`, user `fsweb`/`fsweb`)                             |
+| `dynamodb` | `amazon/dynamodb-local:3.3.2` | 8000      | Amazon DynamoDB Local (`-sharedDb -inMemory`), endpoint `http://localhost:8000` |
 
 `./mvnw spring-boot:run -pl backends/facade` (or `-pl backends/visitor`) starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. Both backends share the same containers; the first one started creates them. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
 - **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics; service names `facade` and `visitor`)
-- **Stop the containers:** `docker compose -p fs-web-springboot down`
+- **Stop the containers:** `docker compose -p fs-web-springboot down` (add `-v` to also delete the MySQL/PostgreSQL data volumes)
+- **Random host ports** (for a DB client): `docker compose -p fs-web-springboot port mysql 3306`, `... port postgres 5432`
+- No backend uses `mysql`, `postgres` or `dynamodb` yet; they are ready for the next service. See [docs/008-mysql-postgres-dynamodb-compose.md](docs/008-mysql-postgres-dynamodb-compose.md) for how a backend connects to them.
 - **Actuator:** `http://localhost:8080/actuator/health` (facade), `http://localhost:8081/actuator/health` (visitor)
 
 See [docs/001-docker-compose-observability.md](docs/001-docker-compose-observability.md) for the full design.
@@ -112,7 +118,7 @@ fs-web-springboot/
 ├── pom.xml                # Parent + aggregator POM (shared versions and plugin settings)
 ├── backends/
 │   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
-│   ├── compose.yaml       # Valkey + Grafana LGTM for local development (shared by all backends)
+│   ├── compose.yaml       # Valkey, Grafana LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev, shared by all backends)
 │   ├── facade/            # Facade backend module (UI + /api/hello, port 8080)
 │   │   ├── pom.xml
 │   │   ├── src/main/java/       # Spring Boot backend code
