@@ -1,7 +1,9 @@
 # Local development services.
 # Started automatically by spring-boot-docker-compose when running `mvn spring-boot:run`.
-# Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey), Kafka and
-# OTLP connections itself, so no host/port properties are needed in application.yml.
+# Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey), Kafka,
+# MySQL/PostgreSQL (JDBC) and OTLP connections itself, so no host/port properties are needed
+# in application.yml. DynamoDB Local is the exception: Boot has no service connection for it,
+# so it uses a fixed host port (see below).
 
 # Keeps the Compose project name (and container names) the same as when this file
 # was in the project root, so existing containers are reused.
@@ -43,3 +45,55 @@ services:
       # (advertised listener), so a random host port would not match and clients would fail
       # after the first metadata request.
       - "9092:9092"
+
+  mysql:
+    # Spring Boot recognizes the "mysql" image and builds JdbcConnectionDetails from the
+    # MYSQL_* variables below (requires a DataSource + MySQL driver on the classpath).
+    # Dev-only credentials; production settings live in application-prod.yml.
+    image: mysql:9.7.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fsweb      # required by Boot's service connection
+      MYSQL_USER: fsweb
+      MYSQL_PASSWORD: fsweb
+    ports:
+      - "3306"        # random host port; Spring Boot discovers it
+                      # find it with: docker compose -p fs-web-springboot port mysql 3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  postgres:
+    # Spring Boot recognizes the "postgres" image and builds JdbcConnectionDetails from the
+    # POSTGRES_* variables below (requires a DataSource + PostgreSQL driver on the classpath).
+    # NOTE: a backend with a DataSource sees BOTH mysql and postgres as JDBC candidates and
+    # fails to start. Add the label `org.springframework.boot.ignore: true` to the one that
+    # backend does not use (see docs/008-mysql-postgres-dynamodb-compose.md).
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: fsweb
+      POSTGRES_PASSWORD: fsweb
+      POSTGRES_DB: fsweb
+    ports:
+      - "5432"        # random host port; Spring Boot discovers it
+                      # find it with: docker compose -p fs-web-springboot port postgres 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  dynamodb:
+    # Amazon DynamoDB Local. Spring Boot has no Docker Compose service connection for it, so
+    # the host port is fixed and the endpoint is configured explicitly, e.g.
+    # spring.cloud.aws.dynamodb.endpoint: http://localhost:8000 (any dummy access key/secret
+    # and a region are enough). -sharedDb stores all tables in one database regardless of the
+    # region/credentials the client sends; -inMemory keeps it in memory, so tables survive app
+    # restarts (the container keeps running) but not `docker compose down`. For data that
+    # survives `down`, replace -inMemory with `-dbPath ./data` and mount a volume on
+    # /home/dynamodblocal/data.
+    image: amazon/dynamodb-local:3.3.2
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    working_dir: /home/dynamodblocal
+    ports:
+      - "8000:8000"   # fixed host port: http://localhost:8000
+
+volumes:
+  mysql-data:
+  postgres-data:
