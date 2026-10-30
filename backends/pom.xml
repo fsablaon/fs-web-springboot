@@ -19,7 +19,7 @@
     <description>Parent POM for the Spring Boot backends</description>
 
     <modules>
-        <module>demo</module>
+        <module>facade</module>
     </modules>
 
     <properties>

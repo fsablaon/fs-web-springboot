@@ -1,4 +1,4 @@
-package org.fsweb.demo.config;
+package org.fsweb.facade.config;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender;

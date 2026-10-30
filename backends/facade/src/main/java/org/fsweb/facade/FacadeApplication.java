@@ -1,13 +1,13 @@
-package org.fsweb.demo;
+package org.fsweb.facade;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class FsWebApplication {
+public class FacadeApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(FsWebApplication.class, args);
+        SpringApplication.run(FacadeApplication.class, args);
     }
 
 }

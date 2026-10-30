@@ -1,8 +1,8 @@
-package org.fsweb.demo.controller;
+package org.fsweb.facade.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.fsweb.demo.dto.VisitCount;
-import org.fsweb.demo.service.VisitCounterService;
+import org.fsweb.facade.dto.VisitCount;
+import org.fsweb.facade.service.VisitCounterService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

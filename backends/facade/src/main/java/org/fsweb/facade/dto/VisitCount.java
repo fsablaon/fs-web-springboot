@@ -1,4 +1,4 @@
-package org.fsweb.demo.dto;
+package org.fsweb.facade.dto;
 
 public record VisitCount(long count) {
 }

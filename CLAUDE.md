@@ -8,22 +8,22 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Maven modules** (multi-module build, root `pom.xml` is the parent and aggregator, `org.fsweb:fs-web-parent`, packaging `pom`):
 
-| Module          | Path            | ArtifactId        | Purpose                                                            |
-|-----------------|-----------------|-------------------|--------------------------------------------------------------------|
-| Frontend        | `frontend/`     | `fs-web-frontend` | Builds the React app; jar holds `static/**`                        |
-| Backends parent | `backends/`     | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)             |
-| Demo backend    | `backends/demo` | `demo`            | Spring Boot app; serves the API and the frontend jar               |
+| Module          | Path              | ArtifactId        | Purpose                                                            |
+|-----------------|-------------------|-------------------|--------------------------------------------------------------------|
+| Frontend        | `frontend/`       | `fs-web-frontend` | Builds the React app; jar holds `static/**`                        |
+| Backends parent | `backends/`       | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)             |
+| Facade backend  | `backends/facade` | `facade`          | Spring Boot app; serves the API and the frontend jar               |
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backend (`backends/demo`):**
-- **Base Package**: `org.fsweb.demo`
+**Backend (`backends/facade`):**
+- **Base Package**: `org.fsweb.facade`
 - **Java Version**: 25
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
-- **Main Application Class**: `FsWebApplication`
+- **Main Application Class**: `FacadeApplication`
 - **Configuration**: Uses `application.yml` for configuration
 - **Build Tool**: Maven via Maven Wrapper 3.3.4 (`./mvnw`, `mvnw.cmd` on Windows), pinned to Maven 3.9.16 in `.mvn/wrapper/maven-wrapper.properties`; use the wrapper instead of a global `mvn`
 
@@ -37,7 +37,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 **Local services (Docker Compose):**
 - `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out) and `lgtm` (Grafana OTel LGTM stack)
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
-- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/demo` and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
+- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/facade` and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
@@ -48,22 +48,22 @@ This is a full-stack web application with Spring Boot backend and React frontend
 ### Full-Stack Development (Recommended)
 For development with hot reload:
 1. **First time only**: `./mvnw install -DskipTests` (installs the parent POM and builds the `fs-web-frontend` jar the backend depends on)
-2. **Start backend**: `./mvnw spring-boot:run -pl backends/demo` (runs on port 8080)
+2. **Start backend**: `./mvnw spring-boot:run -pl backends/facade` (runs on port 8080)
 3. **Start frontend** (in separate terminal): `cd frontend && npm run dev` (runs on port 3000)
 4. Access the app at `http://localhost:3000` (Vite proxies API calls to port 8080)
 
 ### Production Build
-- **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the demo backend JAR includes the frontend jar)
-- **Run production build**: `java -jar backends/demo/target/demo-0.0.1-SNAPSHOT.jar`
+- **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
+- **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar`
 - Access at `http://localhost:8080`
 
 ### Backend Only (Maven Wrapper)
 Run from the project root. `-pl backends/<name>` selects one module; add `-am` to also build the modules it depends on.
 - **Build all modules**: `./mvnw clean install`
-- **Build one backend**: `./mvnw clean install -pl backends/demo -am`
-- **Run application**: `./mvnw spring-boot:run -pl backends/demo`
+- **Build one backend**: `./mvnw clean install -pl backends/facade -am`
+- **Run application**: `./mvnw spring-boot:run -pl backends/facade`
 - **Run tests (all modules)**: `./mvnw test`
-- **Run single test**: `./mvnw test -pl backends/demo -Dtest=ClassName#methodName`
+- **Run single test**: `./mvnw test -pl backends/facade -Dtest=ClassName#methodName`
 - **Package**: `./mvnw package`
 - **Clean**: `./mvnw clean`
 
@@ -83,12 +83,12 @@ fs-web-springboot/
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
 │   ├── compose.yaml                     # Valkey + Grafana LGTM (dev), shared by all backends
-│   └── demo/                            # Demo backend module (artifactId demo)
+│   └── facade/                          # Facade backend module (artifactId facade)
 │       ├── pom.xml
 │       └── src/
 │           ├── main/
-│           │   ├── java/org/fsweb/demo/
-│           │   │   ├── FsWebApplication.java    # Main Spring Boot application
+│           │   ├── java/org/fsweb/facade/
+│           │   │   ├── FacadeApplication.java   # Main Spring Boot application
 │           │   │   ├── config/                  # Configuration classes
 │           │   │   │   ├── WebConfig.java       # SPA routing configuration
 │           │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
@@ -102,8 +102,8 @@ fs-web-springboot/
 │           │       ├── application-prod.yml     # Production Redis/OTLP settings (env vars)
 │           │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
 │           └── test/
-│               └── java/org/fsweb/demo/
-│                   └── FsWebApplicationTests.java
+│               └── java/org/fsweb/facade/
+│                   └── FacadeApplicationTests.java
 ├── frontend/                            # Frontend module (artifactId fs-web-frontend)
 │   ├── pom.xml                          # Runs npm install / npm run build via frontend-maven-plugin
 │   ├── src/
@@ -131,7 +131,7 @@ fs-web-springboot/
 - **Configuration** (`@Configuration`): Spring configuration classes
 
 ### Spring Boot Conventions
-- Application entry point: `FsWebApplication` class with `@SpringBootApplication` and `main()` method
+- Application entry point: `FacadeApplication` class with `@SpringBootApplication` and `main()` method
 - Configuration: `application.yml` in each backend's `src/main/resources/`
 - Use dependency injection via constructor injection (preferred) or `@Autowired`
 - Exception handling: Use `@ControllerAdvice` for global exception handling
@@ -149,7 +149,7 @@ fs-web-springboot/
 - The `frontend` module builds the React app into `frontend/target/classes/static/` and packages it as the `fs-web-frontend` jar
 - A backend that serves the UI depends on `fs-web-frontend` (runtime scope); Spring Boot serves it from `classpath:/static/`
 - `WebConfig.java` handles SPA routing: non-API routes fall back to `index.html`
-- Each backend is its own executable JAR; the demo backend JAR contains the frontend
+- Each backend is its own executable JAR; the facade backend JAR contains the frontend
 
 ### API Conventions
 - All backend API endpoints are prefixed with `/api`
