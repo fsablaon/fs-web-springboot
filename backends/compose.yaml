@@ -1,7 +1,7 @@
 # Local development services.
 # Started automatically by spring-boot-docker-compose when running `mvn spring-boot:run`.
-# Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey) and OTLP
-# connections itself, so no host/port properties are needed in application.yml.
+# Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey), Kafka and
+# OTLP connections itself, so no host/port properties are needed in application.yml.
 
 # Keeps the Compose project name (and container names) the same as when this file
 # was in the project root, so existing containers are reused.
@@ -31,3 +31,15 @@ services:
       - "3001:3000"   # Grafana UI -> http://localhost:3001 (3000 is used by the Vite dev server)
       - "4317"        # OTLP gRPC
       - "4318"        # OTLP HTTP
+
+  kafka:
+    # Single-node Kafka in KRaft mode (no ZooKeeper). The image's default config already runs
+    # a combined broker+controller and advertises PLAINTEXT://localhost:9092 to clients.
+    # Spring Boot recognizes the "apache/kafka" image and sets spring.kafka.bootstrap-servers
+    # from the mapped port (requires spring-kafka on the classpath).
+    image: apache/kafka:4.4.0
+    ports:
+      # Fixed host port on purpose: the broker tells clients to reconnect to localhost:9092
+      # (advertised listener), so a random host port would not match and clients would fail
+      # after the first metadata request.
+      - "9092:9092"
