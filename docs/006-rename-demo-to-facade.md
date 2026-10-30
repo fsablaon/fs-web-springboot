@@ -1,7 +1,7 @@
 # 006 – Rename the `demo` backend to `facade`
 
 The only backend module was renamed from `demo` to `facade`. No behaviour changed: same endpoints,
-same configuration, same Docker Compose services. Only the module name, Java package and documentation moved.
+same configuration, same Docker Compose services. Only the module name, Java package, main class, Spring application name and documentation changed.
 
 ## What changed
 
@@ -14,13 +14,14 @@ same configuration, same Docker Compose services. Only the module name, Java pac
 | Logger `org.fsweb.demo` in `application*.yml` | Logger `org.fsweb.facade`                 |
 | JAR `backends/demo/target/demo-0.0.1-SNAPSHOT.jar` | `backends/facade/target/facade-0.0.1-SNAPSHOT.jar` |
 | `./mvnw spring-boot:run -pl backends/demo` | `./mvnw spring-boot:run -pl backends/facade` |
+| Main class `FsWebApplication`              | `FacadeApplication`                          |
+| Test class `FsWebApplicationTests`         | `FacadeApplicationTests`                     |
+| `spring.application.name: fs-web-springboot` | `spring.application.name: facade` (service name in Grafana/OTel) |
 
 Unchanged on purpose:
 
 | Item                                    | Why                                                                                   |
 |-----------------------------------------|---------------------------------------------------------------------------------------|
-| `FsWebApplication` class name           | Not part of the module name                                                           |
-| `spring.application.name: fs-web-springboot` | Service name shown in Grafana/OTel; rename separately if wanted                   |
 | `docs/001`–`docs/005`                   | Historical records; they describe the layout at the time they were written            |
 | `backends/compose.yaml`                 | Shared by all backends, nothing module-specific in it                                 |
 
@@ -33,7 +34,9 @@ Unchanged on purpose:
 | `backends/facade/pom.xml`                                   | `artifactId`, `name`, `description`                  |
 | `backends/pom.xml`                                          | `<modules>` entry                                    |
 | `*.java` (9 files)                                          | `package` and `import` statements                    |
-| `application.yml`, `application-prod.yml`                   | `logging.level.org.fsweb.facade`                     |
+| `FsWebApplication.java` → `FacadeApplication.java`          | `git mv` + class rename                              |
+| `FsWebApplicationTests.java` → `FacadeApplicationTests.java` | `git mv` + class rename                             |
+| `application.yml`, `application-prod.yml`                   | `logging.level.org.fsweb.facade`; `spring.application.name: facade` |
 | `CLAUDE.md`, `README.md`                                    | Paths, commands, module tables, directory trees      |
 
 ## After pulling this change

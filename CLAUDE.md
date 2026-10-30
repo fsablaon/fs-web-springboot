@@ -23,7 +23,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Java Version**: 25
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
-- **Main Application Class**: `FsWebApplication`
+- **Main Application Class**: `FacadeApplication`
 - **Configuration**: Uses `application.yml` for configuration
 - **Build Tool**: Maven via Maven Wrapper 3.3.4 (`./mvnw`, `mvnw.cmd` on Windows), pinned to Maven 3.9.16 in `.mvn/wrapper/maven-wrapper.properties`; use the wrapper instead of a global `mvn`
 
@@ -88,7 +88,7 @@ fs-web-springboot/
 │       └── src/
 │           ├── main/
 │           │   ├── java/org/fsweb/facade/
-│           │   │   ├── FsWebApplication.java    # Main Spring Boot application
+│           │   │   ├── FacadeApplication.java   # Main Spring Boot application
 │           │   │   ├── config/                  # Configuration classes
 │           │   │   │   ├── WebConfig.java       # SPA routing configuration
 │           │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
@@ -103,7 +103,7 @@ fs-web-springboot/
 │           │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
 │           └── test/
 │               └── java/org/fsweb/facade/
-│                   └── FsWebApplicationTests.java
+│                   └── FacadeApplicationTests.java
 ├── frontend/                            # Frontend module (artifactId fs-web-frontend)
 │   ├── pom.xml                          # Runs npm install / npm run build via frontend-maven-plugin
 │   ├── src/
@@ -131,7 +131,7 @@ fs-web-springboot/
 - **Configuration** (`@Configuration`): Spring configuration classes
 
 ### Spring Boot Conventions
-- Application entry point: `FsWebApplication` class with `@SpringBootApplication` and `main()` method
+- Application entry point: `FacadeApplication` class with `@SpringBootApplication` and `main()` method
 - Configuration: `application.yml` in each backend's `src/main/resources/`
 - Use dependency injection via constructor injection (preferred) or `@Autowired`
 - Exception handling: Use `@ControllerAdvice` for global exception handling

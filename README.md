@@ -137,7 +137,7 @@ To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-m
 ### Backend Tests
 ```bash
 ./mvnw test                                                    # all modules
-./mvnw test -pl backends/facade -Dtest=FsWebApplicationTests     # one test class in one backend
+./mvnw test -pl backends/facade -Dtest=FacadeApplicationTests     # one test class in one backend
 ```
 
 ### Frontend Tests

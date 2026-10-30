@@ -1,6 +1,6 @@
 spring:
   application:
-    name: fs-web-springboot
+    name: facade
   docker:
     compose:
       # Start compose.yaml services if they are not running, and leave them running

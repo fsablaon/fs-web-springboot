@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
         "management.opentelemetry.enabled=false",
         "management.otlp.metrics.export.enabled=false"
 })
-class FsWebApplicationTests {
+class FacadeApplicationTests {
 
     @Test
     void contextLoads() {
