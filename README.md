@@ -24,11 +24,13 @@ A full-stack web application with Spring Boot backend and React frontend.
 ## Prerequisites
 
 - JDK 25 or later
-- Maven 3.6+
+- No Maven install needed: the Maven Wrapper (`./mvnw`, `mvnw.cmd` on Windows) downloads Maven 3.9.16 on first run
 - Node.js 26+ and npm 12+ (for frontend development)
 - Docker Desktop (or another Docker engine with `docker compose`), running before you start the backend
 
 ## Getting Started
+
+Backend commands use the Maven Wrapper. On Windows, run `mvnw.cmd` (cmd) or `.\mvnw.cmd` (PowerShell) in place of `./mvnw`.
 
 ### Development Mode (Recommended)
 
@@ -36,7 +38,7 @@ For development with hot reload:
 
 1. **Start the backend** (Terminal 1):
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 The backend will run on `http://localhost:8080`
 
@@ -61,7 +63,7 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 | `redis` | `redis:8.10-alpine` | Visit counter storage |
 | `lgtm` | `grafana/otel-lgtm:0.32.1` | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector |
 
-`mvn spring-boot:run` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
+`./mvnw spring-boot:run` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
 - **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics)
 - **Stop the containers:** `docker compose down`
@@ -74,7 +76,7 @@ See [docs/docker-compose-observability.md](docs/docker-compose-observability.md)
 Build and run the complete application as a single JAR:
 
 ```bash
-mvn clean install
+./mvnw clean install
 java -jar target/demo-0.0.1-SNAPSHOT.jar
 ```
 
@@ -117,7 +119,7 @@ fs-web-springboot/
 
 ### Backend Tests
 ```bash
-mvn test
+./mvnw test
 ```
 
 ### Frontend Tests
@@ -130,9 +132,9 @@ npm run lint
 
 ### Backend Only
 ```bash
-mvn spring-boot:run      # Run backend
-mvn clean               # Clean build artifacts
-mvn package             # Package as JAR
+./mvnw spring-boot:run    # Run backend
+./mvnw clean              # Clean build artifacts
+./mvnw package            # Package as JAR
 ```
 
 ### Frontend Only
