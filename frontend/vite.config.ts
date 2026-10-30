@@ -14,7 +14,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../src/main/resources/static',
+    // Packaged into the fs-web-frontend jar as static/** (see frontend/pom.xml)
+    outDir: 'target/classes/static',
     emptyOutDir: true,
   },
 })

@@ -13,7 +13,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 - Spring Boot Actuator + OpenTelemetry (OTLP)
 - Spring Boot Docker Compose support
 - Lombok
-- Maven
+- Maven (multi-module: one module per backend plus a frontend module)
 
 **Frontend:**
 - React 19
@@ -38,7 +38,8 @@ For development with hot reload:
 
 1. **Start the backend** (Terminal 1):
 ```bash
-./mvnw spring-boot:run
+./mvnw install -DskipTests                # first time only: installs the parent POM and builds the frontend jar
+./mvnw spring-boot:run -pl backends/demo
 ```
 The backend will run on `http://localhost:8080`
 
@@ -56,17 +57,17 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 
 ### Local Services (Docker Compose)
 
-`compose.yaml` defines the services used in development:
+`backends/compose.yaml` defines the services used in development, shared by all backends:
 
 | Service | Image | Purpose |
 |---------|-------|---------|
 | `redis` | `redis:8.10-alpine` | Visit counter storage |
 | `lgtm` | `grafana/otel-lgtm:0.32.1` | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector |
 
-`./mvnw spring-boot:run` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
+`./mvnw spring-boot:run -pl backends/demo` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
 - **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics)
-- **Stop the containers:** `docker compose down`
+- **Stop the containers:** `docker compose -p fs-web-springboot down`
 - **Actuator:** `http://localhost:8080/actuator/health`
 
 See [docs/docker-compose-observability.md](docs/docker-compose-observability.md) for the full design.
@@ -77,7 +78,7 @@ Build and run the complete application as a single JAR:
 
 ```bash
 ./mvnw clean install
-java -jar target/demo-0.0.1-SNAPSHOT.jar
+java -jar backends/demo/target/demo-0.0.1-SNAPSHOT.jar
 ```
 
 Access the application at `http://localhost:8080`
@@ -86,28 +87,44 @@ The packaged JAR does not include Docker Compose support. Run it with the `prod`
 
 ```bash
 REDIS_HOST=redis.example OTLP_ENDPOINT=http://collector:4318 \
-  java -jar target/demo-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+  java -jar backends/demo/target/demo-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 The Maven build automatically:
-1. Installs Node.js and npm (via frontend-maven-plugin)
+1. Installs Node.js and npm (via frontend-maven-plugin, in the `frontend` module)
 2. Installs frontend dependencies
-3. Builds the React app
-4. Bundles it into the Spring Boot JAR
+3. Builds the React app and packages it as the `fs-web-frontend` jar
+4. Builds each backend; the demo backend JAR includes the frontend jar
 
 ## Project Structure
 
 ```
 fs-web-springboot/
-├── src/main/java/          # Spring Boot backend code
-├── src/main/resources/     # Backend configuration
-├── docs/                   # Design docs
-├── frontend/               # React frontend code
+├── pom.xml                # Parent + aggregator POM (shared versions and plugin settings)
+├── backends/
+│   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
+│   ├── compose.yaml       # Redis + Grafana LGTM for local development (shared by all backends)
+│   └── demo/              # Demo backend module
+│       ├── pom.xml
+│       ├── src/main/java/       # Spring Boot backend code
+│       └── src/main/resources/  # Backend configuration
+├── frontend/              # React frontend module
+│   ├── pom.xml            # Builds the React app into a jar of static resources
 │   ├── src/               # React components and TypeScript
 │   └── vite.config.ts     # Vite configuration with proxy
-├── compose.yaml           # Redis + Grafana LGTM for local development
-└── pom.xml                # Maven configuration
+└── docs/                  # Design docs
 ```
+
+### Maven modules
+
+| Module          | Path            | ArtifactId        | Output                                       |
+|-----------------|-----------------|-------------------|----------------------------------------------|
+| Parent          | `.`             | `fs-web-parent`   | POM only                                     |
+| Frontend        | `frontend/`     | `fs-web-frontend` | Jar with the built React app in `static/`    |
+| Backends parent | `backends/`     | `fs-web-backends` | POM only                                     |
+| Demo backend    | `backends/demo` | `demo`            | Executable Spring Boot JAR                   |
+
+To add another backend, see [docs/multi-module-backends.md](docs/multi-module-backends.md).
 
 ## API Endpoints
 
@@ -119,7 +136,8 @@ fs-web-springboot/
 
 ### Backend Tests
 ```bash
-./mvnw test
+./mvnw test                                                    # all modules
+./mvnw test -pl backends/demo -Dtest=FsWebApplicationTests     # one test class in one backend
 ```
 
 ### Frontend Tests
@@ -132,9 +150,10 @@ npm run lint
 
 ### Backend Only
 ```bash
-./mvnw spring-boot:run    # Run backend
-./mvnw clean              # Clean build artifacts
-./mvnw package            # Package as JAR
+./mvnw spring-boot:run -pl backends/demo     # Run the demo backend
+./mvnw install -pl backends/demo -am         # Build one backend and the modules it depends on
+./mvnw clean                                 # Clean build artifacts (all modules)
+./mvnw package                               # Package all modules
 ```
 
 ### Frontend Only

@@ -12,11 +12,21 @@
         <relativePath/>
     </parent>
 
+    <!-- Root parent and aggregator POM: settings shared by every module.
+         Backend-only settings live in backends/pom.xml. -->
     <groupId>org.fsweb</groupId>
-    <artifactId>demo</artifactId>
+    <artifactId>fs-web-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>fs-web-springboot</name>
-    <description>Spring Boot web application</description>
+    <description>Parent POM for the React frontend and the Spring Boot backends</description>
+
+    <modules>
+        <!-- React app packaged as a jar of static resources (classpath:/static/) -->
+        <module>frontend</module>
+        <!-- Spring Boot backends (see backends/pom.xml) -->
+        <module>backends</module>
+    </modules>
 
     <properties>
         <java.version>25</java.version>
@@ -26,139 +36,29 @@
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v26.13.0</node.version>
         <npm.version>12.2.1</npm.version>
-        <!-- Must match the OpenTelemetry SDK managed by Spring Boot (4.1.2 -> OTel 1.62.0 -> instrumentation 2.28.x).
-             A newer appender pulls in an opentelemetry-api-incubator that the older SDK cannot use (NoClassDefFoundError: ExtendedAttributes). -->
-        <opentelemetry-logback-appender.version>2.28.1-alpha</opentelemetry-logback-appender.version>
     </properties>
 
-    <dependencies>
-        <!-- Spring Boot Web Starter -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- Actuator: health, info and metrics endpoints -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <!-- Redis (Lettuce client) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
-
-        <!-- OpenTelemetry: OTLP export of traces, metrics and logs -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-opentelemetry</artifactId>
-        </dependency>
-
-        <!-- Sends Logback log events to the OpenTelemetry SDK (Loki in LGTM) -->
-        <dependency>
-            <groupId>io.opentelemetry.instrumentation</groupId>
-            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
-            <version>${opentelemetry-logback-appender.version}</version>
-        </dependency>
-
-        <!-- Docker Compose support: starts compose.yaml services on spring-boot:run (dev only, excluded from the packaged JAR) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-docker-compose</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Spring Boot Starter Test -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
     <build>
-        <plugins>
-            <!-- JDK 23+ no longer discovers annotation processors on the classpath; register Lombok explicitly -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.eirslett</groupId>
+                    <artifactId>frontend-maven-plugin</artifactId>
+                    <version>${frontend-maven-plugin.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
 
+        <plugins>
+            <!-- No application here: ./mvnw spring-boot:run from the root skips this POM.
+                 inherited=false keeps the skip out of the modules. -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <inherited>false</inherited>
                 <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
+                    <skip>true</skip>
                 </configuration>
-            </plugin>
-
-            <!-- Frontend Maven Plugin -->
-            <plugin>
-                <groupId>com.github.eirslett</groupId>
-                <artifactId>frontend-maven-plugin</artifactId>
-                <version>${frontend-maven-plugin.version}</version>
-                <configuration>
-                    <workingDirectory>frontend</workingDirectory>
-                    <installDirectory>target</installDirectory>
-                </configuration>
-                <executions>
-                    <!-- Install Node and npm -->
-                    <execution>
-                        <id>install node and npm</id>
-                        <goals>
-                            <goal>install-node-and-npm</goal>
-                        </goals>
-                        <configuration>
-                            <nodeVersion>${node.version}</nodeVersion>
-                            <npmVersion>${npm.version}</npmVersion>
-                        </configuration>
-                    </execution>
-
-                    <!-- npm install -->
-                    <execution>
-                        <id>npm install</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <configuration>
-                            <arguments>install --loglevel=warn</arguments>
-                        </configuration>
-                    </execution>
-
-                    <!-- npm run build -->
-                    <execution>
-                        <id>npm run build</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <configuration>
-                            <arguments>run build --loglevel=warn</arguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
