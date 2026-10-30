@@ -1,12 +1,6 @@
 # Production profile: activate with --spring.profiles.active=prod
-# Docker Compose support is not included in the packaged JAR, so Redis and
-# OTLP endpoints must be set explicitly (environment variables shown below).
-spring:
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
+# Docker Compose support is not included in the packaged JAR, so the OTLP
+# endpoint must be set explicitly (environment variables shown below).
 management:
   tracing:
     sampling:

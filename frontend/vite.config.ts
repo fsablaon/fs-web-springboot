@@ -7,8 +7,13 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // Longest prefix first: Vite picks the first matching entry
+      '/api/visits': {
+        target: 'http://localhost:8081',   // visitor backend
+        changeOrigin: true,
+      },
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8080',   // facade backend
         changeOrigin: true,
       },
     },

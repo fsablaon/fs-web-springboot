@@ -93,7 +93,7 @@ function App() {
 
         <div className={styles.visits}>
           {visitsError
-            ? 'Visit counter unavailable (is Redis running?)'
+            ? 'Visit counter unavailable (is the visitor backend running?)'
             : visits === null
               ? 'Counting visits...'
               : <>Visits: <strong>{visits}</strong></>}
@@ -101,7 +101,7 @@ function App() {
 
         <div className={styles.info}>
           <p>This React frontend calls the Spring Boot backend API at <code>/api/hello</code></p>
-          <p>The visit counter is stored in Redis via <code>/api/visits</code></p>
+          <p>The visit counter is served by the visitor backend at <code>/api/visits</code> and stored in Valkey</p>
         </div>
       </div>
     </div>
