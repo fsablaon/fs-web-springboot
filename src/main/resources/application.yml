@@ -1,9 +1,24 @@
 spring:
   application:
     name: fs-web-springboot
+  docker:
+    compose:
+      # Start compose.yaml services if they are not running, and leave them running
+      # when the app stops (faster restarts, telemetry data is kept).
+      # Stop them with: docker compose down
+      lifecycle-management: start-only
 
 server:
   port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0   # trace every request in development
 
 logging:
   level:

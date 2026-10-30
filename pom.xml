@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
 
@@ -26,6 +26,7 @@
         <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
         <node.version>v24.12.0</node.version>
         <npm.version>11.7.0</npm.version>
+        <opentelemetry-logback-appender.version>2.33.1-alpha</opentelemetry-logback-appender.version>
     </properties>
 
     <dependencies>
@@ -33,6 +34,38 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Actuator: health, info and metrics endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Redis (Lettuce client) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- OpenTelemetry: OTLP export of traces, metrics and logs -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+
+        <!-- Sends Logback log events to the OpenTelemetry SDK (Loki in LGTM) -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+            <version>${opentelemetry-logback-appender.version}</version>
+        </dependency>
+
+        <!-- Docker Compose support: starts compose.yaml services on spring-boot:run (dev only, excluded from the packaged JAR) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-docker-compose</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- Lombok -->

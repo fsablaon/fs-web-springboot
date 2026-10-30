@@ -9,7 +9,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 **Backend:**
 - **Base Package**: `org.fsweb.demo`
 - **Java Version**: 25
-- **Spring Boot Version**: 4.0.0
+- **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
 - **Main Application Class**: `FsWebApplication`
 - **Configuration**: Uses `application.yml` for configuration
@@ -20,6 +20,14 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Styling**: CSS Modules
 - **Dev Server Port**: 3000
 - **Location**: `frontend/` directory
+
+**Local services (Docker Compose):**
+- `compose.yaml` in the project root: `redis` (Redis 8) and `lgtm` (Grafana OTel LGTM stack)
+- `spring-boot-docker-compose` (optional dependency) starts them on `mvn spring-boot:run` and creates the Redis and OTLP connection details automatically; do not hardcode hosts/ports for dev
+- Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
+- Containers keep running after the app stops; `docker compose down` stops them
+- Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
+- Design notes: `docs/docker-compose-observability.md`
 
 ## Build & Development Commands
 
@@ -59,11 +67,17 @@ fs-web-springboot/
 │   │   ├── java/org/fsweb/demo/
 │   │   │   ├── FsWebApplication.java    # Main Spring Boot application
 │   │   │   ├── config/                  # Configuration classes
-│   │   │   │   └── WebConfig.java       # SPA routing configuration
-│   │   │   └── controller/              # REST API controllers
-│   │   │       └── HelloController.java
+│   │   │   │   ├── WebConfig.java       # SPA routing configuration
+│   │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
+│   │   │   ├── controller/              # REST API controllers
+│   │   │   │   ├── HelloController.java
+│   │   │   │   └── VisitController.java # /api/visits (Redis counter)
+│   │   │   ├── dto/                     # API records (VisitCount)
+│   │   │   └── service/                 # Business logic (VisitCounterService)
 │   │   └── resources/
 │   │       ├── application.yml          # Backend configuration
+│   │       ├── application-prod.yml     # Production Redis/OTLP settings (env vars)
+│   │       ├── logback-spring.xml       # Console + OpenTelemetry log appenders
 │   │       └── static/                  # Built React app (generated)
 │   └── test/
 │       └── java/org/fsweb/demo/
@@ -77,6 +91,8 @@ fs-web-springboot/
 │   ├── vite.config.ts                   # Vite configuration (proxy setup)
 │   ├── tsconfig.json                    # TypeScript configuration
 │   └── package.json                     # Frontend dependencies
+├── docs/                                # Design docs
+├── compose.yaml                         # Redis + Grafana LGTM (dev)
 └── pom.xml                              # Maven configuration
 ```
 
@@ -115,3 +131,9 @@ fs-web-springboot/
 - All backend API endpoints are prefixed with `/api`
 - Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
 - This works in both dev (proxied) and production (same origin)
+
+
+## Custom Conventions
+- Always create a branch for new implementation work
+- Always summary the task and place summary in docs directory
+- Format markdown tables in human readable form
