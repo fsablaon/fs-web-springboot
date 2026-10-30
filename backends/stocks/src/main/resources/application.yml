@@ -1,0 +1,30 @@
+spring:
+  application:
+    # Also the OpenTelemetry service.name, so traces/logs are separate from facade's and visitor's in Grafana
+    name: stocks
+  docker:
+    compose:
+      # Start compose.yaml services if they are not running, and leave them running
+      # when the app stops (faster restarts, telemetry data is kept).
+      # Stop them with: docker compose -p fs-web-springboot down
+      lifecycle-management: start-only
+      # Shared by all backends. Relative to the working directory, which is the project
+      # root for ./mvnw spring-boot:run (see backends/pom.xml) and for IntelliJ.
+      file: backends/compose.yaml
+
+server:
+  port: 8082   # facade uses 8080, visitor 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0   # trace every request in development
+
+logging:
+  level:
+    root: INFO
+    org.fsweb.stocks: DEBUG

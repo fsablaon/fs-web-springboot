@@ -12,6 +12,10 @@ export default defineConfig({
         target: 'http://localhost:8081',   // visitor backend
         changeOrigin: true,
       },
+      '/api/stocks': {
+        target: 'http://localhost:8082',   // stocks backend
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8080',   // facade backend
         changeOrigin: true,

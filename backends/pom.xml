@@ -21,6 +21,7 @@
     <modules>
         <module>facade</module>
         <module>visitor</module>
+        <module>stocks</module>
     </modules>
 
     <properties>
