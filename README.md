@@ -6,7 +6,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 
 **Backend:**
 - Java 25
-- Spring Boot 4.0.0
+- Spring Boot 4.1.2
 - Spring Framework 7.0
 - Spring Web
 - Spring Data Redis
@@ -25,7 +25,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 
 - JDK 25 or later
 - Maven 3.6+
-- Node.js 24+ and npm 11+ (for frontend development)
+- Node.js 26+ and npm 12+ (for frontend development)
 - Docker Desktop (or another Docker engine with `docker compose`), running before you start the backend
 
 ## Getting Started
@@ -58,8 +58,8 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 
 | Service | Image | Purpose |
 |---------|-------|---------|
-| `redis` | `redis:8.8-alpine` | Visit counter storage |
-| `lgtm` | `grafana/otel-lgtm:0.32.0` | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector |
+| `redis` | `redis:8.10-alpine` | Visit counter storage |
+| `lgtm` | `grafana/otel-lgtm:0.32.1` | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector |
 
 `mvn spring-boot:run` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
 

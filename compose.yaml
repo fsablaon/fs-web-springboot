@@ -4,13 +4,13 @@
 # connections itself, so no host/port properties are needed in application.yml.
 services:
   redis:
-    image: redis:8.8-alpine
+    image: redis:8.10-alpine
     ports:
       - "6379"        # random host port; Spring Boot discovers it
 
   lgtm:
     # Grafana + Loki (logs) + Tempo (traces) + Mimir/Prometheus (metrics) + OTel Collector
-    image: grafana/otel-lgtm:0.32.0
+    image: grafana/otel-lgtm:0.32.1
     ports:
       - "3001:3000"   # Grafana UI -> http://localhost:3001 (3000 is used by the Vite dev server)
       - "4317"        # OTLP gRPC

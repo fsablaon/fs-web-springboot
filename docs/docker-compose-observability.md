@@ -32,8 +32,8 @@ out of the packaged JAR.
 |--------------------------------------|-------------------|---------------------------------------------------------------------------|
 | Spring Boot                          | 4.1.2 (was 4.0.0) | OTLP log export needs 4.0.1+; 4.1 adds `management.opentelemetry.enabled` |
 | `opentelemetry-logback-appender-1.0` | 2.33.1-alpha      | Not managed by Boot; only alpha versions are published                    |
-| `redis` image                        | 8.8-alpine        |                                                                           |
-| `grafana/otel-lgtm` image            | 0.32.0            |                                                                           |
+| `redis` image                        | 8.10-alpine       |                                                                           |
+| `grafana/otel-lgtm` image            | 0.32.1            |                                                                           |
 
 ## Changes
 
