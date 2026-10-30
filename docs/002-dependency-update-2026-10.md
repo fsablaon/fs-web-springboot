@@ -64,7 +64,7 @@ No source or config changes were needed for the frontend majors.
 ## Docs
 
 - `README.md`: Spring Boot 4.0.0 → 4.1.2 (was stale), Node 24+/npm 11+ → Node 26+/npm 12+, image tags.
-- `docs/docker-compose-observability.md`: image tags.
+- `docs/001-docker-compose-observability.md`: image tags.
 
 ## Verification
 

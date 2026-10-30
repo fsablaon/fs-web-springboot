@@ -141,19 +141,20 @@ Docker Compose support is skipped in tests and excluded from the packaged JAR.
 
 ## Files changed
 
-| File                                               | Change                                                                                          |
-|----------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| `pom.xml`                                          | Rewritten as root parent + aggregator; skips `spring-boot:run` for itself                       |
-| `backends/pom.xml`                                 | Added: backend parent + aggregator with the backend-only build settings and shared dependencies |
-| `backends/demo/pom.xml`                            | Added (backend dependencies moved from the old root POM)                                        |
-| `frontend/pom.xml`                                 | Added (frontend-maven-plugin moved from the old root POM)                                       |
-| `src/**` → `backends/demo/src/**`                  | Moved with `git mv`                                                                             |
-| `compose.yaml` → `backends/compose.yaml`           | Moved with `git mv`; added `name: fs-web-springboot`                                            |
-| `backends/demo/src/main/resources/application.yml` | `spring.docker.compose.file: backends/compose.yaml`; updated stop command                       |
-| `frontend/vite.config.ts`                          | `outDir` → `target/classes/static`                                                              |
-| `frontend/eslint.config.js`                        | Ignores `target`                                                                                |
-| `.gitignore`                                       | Removed `src/main/resources/static/` rule                                                       |
-| `README.md`, `CLAUDE.md`                           | Commands, paths and structure updated                                                           |
+| File                                               | Change                                                                                           |
+|----------------------------------------------------|--------------------------------------------------------------------------------------------------|
+| `pom.xml`                                          | Rewritten as root parent + aggregator; skips `spring-boot:run` for itself                        |
+| `backends/pom.xml`                                 | Added: backend parent + aggregator with the backend-only build settings and shared dependencies  |
+| `backends/demo/pom.xml`                            | Added (backend dependencies moved from the old root POM)                                         |
+| `frontend/pom.xml`                                 | Added (frontend-maven-plugin moved from the old root POM)                                        |
+| `src/**` → `backends/demo/src/**`                  | Moved with `git mv`                                                                              |
+| `compose.yaml` → `backends/compose.yaml`           | Moved with `git mv`; added `name: fs-web-springboot`                                             |
+| `backends/demo/src/main/resources/application.yml` | `spring.docker.compose.file: backends/compose.yaml`; updated stop command                        |
+| `frontend/vite.config.ts`                          | `outDir` → `target/classes/static`                                                               |
+| `frontend/eslint.config.js`                        | Ignores `target`                                                                                 |
+| `.gitignore`                                       | Removed `src/main/resources/static/` rule                                                        |
+| `README.md`, `CLAUDE.md`                           | Commands, paths and structure updated                                                            |
+| `docs/*.md`                                        | Prefixed with a three-digit sequence number (`001-` … `004-`) in the order the changes were made |
 
 ## Verification
 
@@ -180,4 +181,4 @@ Still to check on a JDK 25 machine:
 ## Notes
 
 - The root `target/` folder from earlier single-module builds (including `target/node`) is no longer used; `./mvnw clean` removes it.
-- `docs/docker-compose-observability.md` describes the setup before this change (single module, `compose.yaml` in the root).
+- `docs/001-docker-compose-observability.md` describes the setup before this change (single module, `compose.yaml` in the root).

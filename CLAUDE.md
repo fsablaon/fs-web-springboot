@@ -16,7 +16,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
-- New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/multi-module-backends.md`
+- New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
 **Backend (`backends/demo`):**
 - **Base Package**: `org.fsweb.demo`
@@ -41,7 +41,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
-- Design notes: `docs/docker-compose-observability.md`
+- Design notes: `docs/001-docker-compose-observability.md`
 
 ## Build & Development Commands
 
@@ -159,7 +159,7 @@ fs-web-springboot/
 
 ## Custom Conventions
 - Always create a branch for new implementation work
-- Always summary the task and place summary in docs directory
+- Always summary the task and place summary in docs directory, named `docs/NNN-<topic>.md` where `NNN` is the next three-digit number (e.g. `005-<topic>.md`), so the files sort in the order the changes were made
 - Format markdown tables in human readable form
 
 # Verify changes

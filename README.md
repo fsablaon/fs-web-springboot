@@ -70,7 +70,7 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 - **Stop the containers:** `docker compose -p fs-web-springboot down`
 - **Actuator:** `http://localhost:8080/actuator/health`
 
-See [docs/docker-compose-observability.md](docs/docker-compose-observability.md) for the full design.
+See [docs/001-docker-compose-observability.md](docs/001-docker-compose-observability.md) for the full design.
 
 ### Production Build
 
@@ -124,7 +124,7 @@ fs-web-springboot/
 | Backends parent | `backends/`     | `fs-web-backends` | POM only                                     |
 | Demo backend    | `backends/demo` | `demo`            | Executable Spring Boot JAR                   |
 
-To add another backend, see [docs/multi-module-backends.md](docs/multi-module-backends.md).
+To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md).
 
 ## API Endpoints
 
