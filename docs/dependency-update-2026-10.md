@@ -9,13 +9,21 @@ Goal: move every dependency to its latest release, majors included.
 | Item                                 | Before       | After        | Notes                                                       |
 |--------------------------------------|--------------|--------------|-------------------------------------------------------------|
 | Spring Boot parent                   | 4.1.2        | 4.1.2        | Already latest (released 2026-10-22); no 4.2 GA yet         |
-| `opentelemetry-logback-appender-1.0` | 2.33.1-alpha | 2.33.1-alpha | Already latest                                              |
+| `opentelemetry-logback-appender-1.0` | 2.33.1-alpha | 2.28.1-alpha | Pinned to match Boot's OTel 1.62.0; see note below          |
 | `frontend-maven-plugin`              | 1.15.1       | 2.0.2        | Major. 2.0 raises minimum dependency versions; no config changes |
 | Node.js (plugin download)            | v24.12.0     | v26.13.0     | Node 26 is now the Active LTS line                          |
 | npm (plugin download)                | 11.7.0       | 12.2.1       | Major. Requires Node `>=26` / `^24.15` / `^22.22.2`         |
 | Java                                 | 25           | 25           | Kept on the current LTS                                     |
 
 All other Java dependencies (web, actuator, data-redis, opentelemetry starter, docker-compose, Lombok, test) are managed by the Boot parent.
+
+**OpenTelemetry version alignment (fixed 2026-10-30).** Appender 2.33.1-alpha is built against OTel 1.67.0 and pulled in `opentelemetry-api-incubator` 1.67.0-alpha, while Spring Boot 4.1.2 manages OTel API/SDK 1.62.0. Incubator 1.67 no longer has `io.opentelemetry.api.incubator.common.ExtendedAttributes`, which SDK 1.62 uses, so the log export thread crashed at startup (`NoClassDefFoundError`) and logs stopped reaching Loki. The appender is now 2.28.1-alpha, the instrumentation release built against OTel 1.62.0.
+
+| Spring Boot | OTel API/SDK | Matching appender |
+|-------------|--------------|-------------------|
+| 4.1.2       | 1.62.0       | 2.28.x-alpha      |
+
+When upgrading Spring Boot, check its managed OTel version and move the appender to the instrumentation release with the same `otelSdkVersion` (see `dependencyManagement/build.gradle.kts` in `opentelemetry-java-instrumentation` at that tag).
 
 ## Frontend (`frontend/package.json`)
 

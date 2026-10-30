@@ -26,7 +26,9 @@
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v26.13.0</node.version>
         <npm.version>12.2.1</npm.version>
-        <opentelemetry-logback-appender.version>2.33.1-alpha</opentelemetry-logback-appender.version>
+        <!-- Must match the OpenTelemetry SDK managed by Spring Boot (4.1.2 -> OTel 1.62.0 -> instrumentation 2.28.x).
+             A newer appender pulls in an opentelemetry-api-incubator that the older SDK cannot use (NoClassDefFoundError: ExtendedAttributes). -->
+        <opentelemetry-logback-appender.version>2.28.1-alpha</opentelemetry-logback-appender.version>
     </properties>
 
     <dependencies>
@@ -86,6 +88,20 @@
 
     <build>
         <plugins>
+            <!-- JDK 23+ no longer discovers annotation processors on the classpath; register Lombok explicitly -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -128,7 +144,7 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>install</arguments>
+                            <arguments>install --loglevel=warn</arguments>
                         </configuration>
                     </execution>
 
@@ -139,7 +155,7 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>run build</arguments>
+                            <arguments>run build --loglevel=warn</arguments>
                         </configuration>
                     </execution>
                 </executions>

@@ -13,6 +13,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Spring Framework Version**: 7.0
 - **Main Application Class**: `FsWebApplication`
 - **Configuration**: Uses `application.yml` for configuration
+- **Build Tool**: Maven via Maven Wrapper 3.3.4 (`./mvnw`, `mvnw.cmd` on Windows), pinned to Maven 3.9.16 in `.mvn/wrapper/maven-wrapper.properties`; use the wrapper instead of a global `mvn`
 
 **Frontend:**
 - **Framework**: React 19 with TypeScript
@@ -23,7 +24,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Local services (Docker Compose):**
 - `compose.yaml` in the project root: `redis` (Redis 8) and `lgtm` (Grafana OTel LGTM stack)
-- `spring-boot-docker-compose` (optional dependency) starts them on `mvn spring-boot:run` and creates the Redis and OTLP connection details automatically; do not hardcode hosts/ports for dev
+- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run` and creates the Redis and OTLP connection details automatically; do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
@@ -33,22 +34,22 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 ### Full-Stack Development (Recommended)
 For development with hot reload:
-1. **Start backend**: `mvn spring-boot:run` (runs on port 8080)
+1. **Start backend**: `./mvnw spring-boot:run` (runs on port 8080)
 2. **Start frontend** (in separate terminal): `cd frontend && npm run dev` (runs on port 3000)
 3. Access the app at `http://localhost:3000` (Vite proxies API calls to port 8080)
 
 ### Production Build
-- **Full build**: `mvn clean install` (builds both backend and frontend, bundles React into Spring Boot JAR)
-- **Run production build**: `mvn spring-boot:run` or `java -jar target/demo-0.0.1-SNAPSHOT.jar`
+- **Full build**: `./mvnw clean install` (builds both backend and frontend, bundles React into Spring Boot JAR)
+- **Run production build**: `./mvnw spring-boot:run` or `java -jar target/demo-0.0.1-SNAPSHOT.jar`
 - Access at `http://localhost:8080`
 
-### Backend Only (Maven)
-- **Build**: `mvn clean install`
-- **Run application**: `mvn spring-boot:run`
-- **Run tests**: `mvn test`
-- **Run single test**: `mvn test -Dtest=ClassName#methodName`
-- **Package**: `mvn package`
-- **Clean**: `mvn clean`
+### Backend Only (Maven Wrapper)
+- **Build**: `./mvnw clean install`
+- **Run application**: `./mvnw spring-boot:run`
+- **Run tests**: `./mvnw test`
+- **Run single test**: `./mvnw test -Dtest=ClassName#methodName`
+- **Package**: `./mvnw package`
+- **Clean**: `./mvnw clean`
 
 ### Frontend Only (npm)
 All commands run from `frontend/` directory:
@@ -92,6 +93,8 @@ fs-web-springboot/
 │   ├── tsconfig.json                    # TypeScript configuration
 │   └── package.json                     # Frontend dependencies
 ├── docs/                                # Design docs
+├── .mvn/wrapper/                        # maven-wrapper.properties (Maven version)
+├── mvnw / mvnw.cmd                      # Maven Wrapper scripts (Unix / Windows)
 ├── compose.yaml                         # Redis + Grafana LGTM (dev)
 └── pom.xml                              # Maven configuration
 ```

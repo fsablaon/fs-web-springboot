@@ -31,7 +31,6 @@ target/
 
 # Spring Boot
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.properties
 
 # IDE
 .idea/
