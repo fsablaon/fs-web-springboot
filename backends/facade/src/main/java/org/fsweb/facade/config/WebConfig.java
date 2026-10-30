@@ -1,4 +1,4 @@
-package org.fsweb.demo.config;
+package org.fsweb.facade.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;

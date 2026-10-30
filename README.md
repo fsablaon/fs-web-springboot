@@ -39,7 +39,7 @@ For development with hot reload:
 1. **Start the backend** (Terminal 1):
 ```bash
 ./mvnw install -DskipTests                # first time only: installs the parent POM and builds the frontend jar
-./mvnw spring-boot:run -pl backends/demo
+./mvnw spring-boot:run -pl backends/facade
 ```
 The backend will run on `http://localhost:8080`
 
@@ -64,7 +64,7 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 | `valkey` | `valkey/valkey:9.1.3-alpine` | Visit counter storage (Redis-compatible; the `redis` service is commented out) |
 | `lgtm`   | `grafana/otel-lgtm:0.32.1`   | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector          |
 
-`./mvnw spring-boot:run -pl backends/demo` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
+`./mvnw spring-boot:run -pl backends/facade` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
 - **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics)
 - **Stop the containers:** `docker compose -p fs-web-springboot down`
@@ -78,7 +78,7 @@ Build and run the complete application as a single JAR:
 
 ```bash
 ./mvnw clean install
-java -jar backends/demo/target/demo-0.0.1-SNAPSHOT.jar
+java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar
 ```
 
 Access the application at `http://localhost:8080`
@@ -87,14 +87,14 @@ The packaged JAR does not include Docker Compose support. Run it with the `prod`
 
 ```bash
 REDIS_HOST=redis.example OTLP_ENDPOINT=http://collector:4318 \
-  java -jar backends/demo/target/demo-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+  java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 The Maven build automatically:
 1. Installs Node.js and npm (via frontend-maven-plugin, in the `frontend` module)
 2. Installs frontend dependencies
 3. Builds the React app and packages it as the `fs-web-frontend` jar
-4. Builds each backend; the demo backend JAR includes the frontend jar
+4. Builds each backend; the facade backend JAR includes the frontend jar
 
 ## Project Structure
 
@@ -104,7 +104,7 @@ fs-web-springboot/
 ├── backends/
 │   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
 │   ├── compose.yaml       # Valkey + Grafana LGTM for local development (shared by all backends)
-│   └── demo/              # Demo backend module
+│   └── facade/            # Facade backend module
 │       ├── pom.xml
 │       ├── src/main/java/       # Spring Boot backend code
 │       └── src/main/resources/  # Backend configuration
@@ -117,12 +117,12 @@ fs-web-springboot/
 
 ### Maven modules
 
-| Module          | Path            | ArtifactId        | Output                                       |
-|-----------------|-----------------|-------------------|----------------------------------------------|
-| Parent          | `.`             | `fs-web-parent`   | POM only                                     |
-| Frontend        | `frontend/`     | `fs-web-frontend` | Jar with the built React app in `static/`    |
-| Backends parent | `backends/`     | `fs-web-backends` | POM only                                     |
-| Demo backend    | `backends/demo` | `demo`            | Executable Spring Boot JAR                   |
+| Module          | Path              | ArtifactId        | Output                                       |
+|-----------------|-------------------|-------------------|----------------------------------------------|
+| Parent          | `.`               | `fs-web-parent`   | POM only                                     |
+| Frontend        | `frontend/`       | `fs-web-frontend` | Jar with the built React app in `static/`    |
+| Backends parent | `backends/`       | `fs-web-backends` | POM only                                     |
+| Facade backend  | `backends/facade` | `facade`          | Executable Spring Boot JAR                   |
 
 To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md).
 
@@ -137,7 +137,7 @@ To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-m
 ### Backend Tests
 ```bash
 ./mvnw test                                                    # all modules
-./mvnw test -pl backends/demo -Dtest=FsWebApplicationTests     # one test class in one backend
+./mvnw test -pl backends/facade -Dtest=FsWebApplicationTests     # one test class in one backend
 ```
 
 ### Frontend Tests
@@ -150,8 +150,8 @@ npm run lint
 
 ### Backend Only
 ```bash
-./mvnw spring-boot:run -pl backends/demo     # Run the demo backend
-./mvnw install -pl backends/demo -am         # Build one backend and the modules it depends on
+./mvnw spring-boot:run -pl backends/facade     # Run the facade backend
+./mvnw install -pl backends/facade -am         # Build one backend and the modules it depends on
 ./mvnw clean                                 # Clean build artifacts (all modules)
 ./mvnw package                               # Package all modules
 ```

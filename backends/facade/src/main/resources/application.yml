@@ -26,4 +26,4 @@ management:
 logging:
   level:
     root: INFO
-    org.fsweb.demo: DEBUG
+    org.fsweb.facade: DEBUG

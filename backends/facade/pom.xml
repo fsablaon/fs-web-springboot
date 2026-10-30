@@ -11,9 +11,9 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>demo</artifactId>
-    <name>demo</name>
-    <description>Demo backend: REST API, Redis visit counter, OpenTelemetry; serves the React frontend</description>
+    <artifactId>facade</artifactId>
+    <name>facade</name>
+    <description>Facade backend: REST API, Redis visit counter, OpenTelemetry; serves the React frontend</description>
 
     <dependencies>
         <!-- React app (static/**), served by WebConfig -->

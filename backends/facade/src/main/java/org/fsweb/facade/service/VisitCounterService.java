@@ -1,4 +1,4 @@
-package org.fsweb.demo.service;
+package org.fsweb.facade.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
