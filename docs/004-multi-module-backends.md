@@ -158,7 +158,7 @@ Docker Compose support is skipped in tests and excluded from the packaged JAR.
 
 ## Verification
 
-Ran on a copy of the project with Maven 3.9.16 (wrapper) and JDK 21, passing `-Djava.version=21 -Dmaven.compiler.source=21 -Dmaven.compiler.target=21` because JDK 25 was not available in that environment.
+Ran on the PR branch with Maven 3.9.16 (wrapper) and OpenJDK 25.0.4, with no overrides: `javac` compiled with `release 25` (class file major version 69) and the app ran on Java 25.0.4. An earlier pass with JDK 21 (`-Djava.version=21`) gave the same results.
 
 | Check                                                 | Result                                                                                                                                                       |
 |-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -172,9 +172,8 @@ Ran on a copy of the project with Maven 3.9.16 (wrapper) and JDK 21, passing `-D
 | `./mvnw spring-boot:run -pl backends/demo`            | `demo` starts                                                                                                                                                |
 | Docker Compose file lookup                            | `Using Docker Compose file <root>/backends/compose.yaml` for root `spring-boot:run`, `-pl`, and a plain `java` launch from the project root (IntelliJ-style) |
 
-Still to check on a JDK 25 machine:
+Still to check on a machine with Docker Hub access:
 
-- `./mvnw clean install` with the default `java.version=25`
 - `./mvnw spring-boot:run -pl backends/demo` and the IntelliJ run configuration with Docker running, to confirm Redis and LGTM start and `/actuator/health` is `UP` (pulling images from Docker Hub was blocked during verification, so the app ran with `--spring.docker.compose.enabled=false` and Redis down)
 - In IntelliJ, reload the Maven project (the old single `demo` module becomes four modules)
 
