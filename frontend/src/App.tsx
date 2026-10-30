@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styles from './App.module.css'
 
 function App() {
@@ -6,6 +6,23 @@ function App() {
   const [greeting, setGreeting] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [visits, setVisits] = useState<number | null>(null)
+  const [visitsError, setVisitsError] = useState(false)
+  const visitRecorded = useRef(false)
+
+  // Record one visit per page load (the ref guard stops StrictMode's double effect run in dev)
+  useEffect(() => {
+    if (visitRecorded.current) return
+    visitRecorded.current = true
+
+    fetch('/api/visits', { method: 'POST' })
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to record visit')
+        return response.json() as Promise<{ count: number }>
+      })
+      .then((data) => setVisits(data.count))
+      .catch(() => setVisitsError(true))
+  }, [])
 
   const fetchGreeting = async () => {
     setLoading(true)
@@ -74,8 +91,17 @@ function App() {
           </div>
         )}
 
+        <div className={styles.visits}>
+          {visitsError
+            ? 'Visit counter unavailable (is Redis running?)'
+            : visits === null
+              ? 'Counting visits...'
+              : <>Visits: <strong>{visits}</strong></>}
+        </div>
+
         <div className={styles.info}>
           <p>This React frontend calls the Spring Boot backend API at <code>/api/hello</code></p>
+          <p>The visit counter is stored in Redis via <code>/api/visits</code></p>
         </div>
       </div>
     </div>
