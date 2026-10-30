@@ -1,6 +1,6 @@
 # Local development services.
 # Started automatically by spring-boot-docker-compose when running `mvn spring-boot:run`.
-# Spring Boot reads the mapped ports from Docker and creates the Redis and OTLP
+# Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey) and OTLP
 # connections itself, so no host/port properties are needed in application.yml.
 
 # Keeps the Compose project name (and container names) the same as when this file
@@ -8,10 +8,21 @@
 name: fs-web-springboot
 
 services:
-  redis:
-    image: redis:8.10-alpine
+  # Replaced by valkey below. Uncomment (and comment out valkey) to go back to Redis.
+  # redis:
+  #   image: redis:8.10-alpine
+  #   ports:
+  #     - "6379"        # random host port; Spring Boot discovers it
+
+  valkey:
+    # Redis-compatible (RESP protocol), used by spring-boot-starter-data-redis / Lettuce as-is
+    image: valkey/valkey:9.1.3-alpine
     ports:
       - "6379"        # random host port; Spring Boot discovers it
+    labels:
+      # Spring Boot only recognizes images named "redis", "redis/redis-stack" or
+      # "redis/redis-stack-server"; this label tells it to treat valkey as Redis.
+      org.springframework.boot.service-connection: redis
 
   lgtm:
     # Grafana + Loki (logs) + Tempo (traces) + Mimir/Prometheus (metrics) + OTel Collector
