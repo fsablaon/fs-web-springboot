@@ -13,7 +13,7 @@
 
     <artifactId>visitor</artifactId>
     <name>visitor</name>
-    <description>Visitor backend: owns the visit counter (/api/visits) stored in Valkey/Redis; does not serve the UI</description>
+    <description>Visitor backend: owns the visit counter (/api/visits) stored in Valkey/Redis and consumes visit events from Kafka; does not serve the UI</description>
 
     <dependencies>
         <!-- Spring Boot Web Starter -->
@@ -34,6 +34,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Kafka (@KafkaListener): consumes the visit events the facade backend publishes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+
         <!-- OpenTelemetry: OTLP export of traces, metrics and logs -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -51,6 +57,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-docker-compose</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Embedded Kafka broker (KRaft) for the listener integration test -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- No fs-web-frontend dependency: the facade backend serves the React app.

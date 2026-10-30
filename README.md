@@ -10,6 +10,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 - Spring Framework 7.0
 - Spring Web
 - Spring Data Redis
+- Spring for Apache Kafka (facade publishes visit events, visitor consumes them)
 - Spring Boot Actuator + OpenTelemetry (OTLP)
 - Spring Boot Docker Compose support
 - Lombok
@@ -41,7 +42,7 @@ For development with hot reload:
 ./mvnw install -DskipTests                # first time only: installs the parent POM and builds the frontend jar
 ./mvnw spring-boot:run -pl backends/facade
 ```
-The facade backend (`/api/hello`, serves the UI in production) runs on `http://localhost:8080`. Each `/api/hello` call records a visit in the visitor backend; if the visitor backend is not running, the greeting is still returned and a warning is logged.
+The facade backend (`/api/hello`, serves the UI in production) runs on `http://localhost:8080`. Each `/api/hello` call publishes a visit event to the Kafka topic `fs-web.visits`; the visitor backend consumes it and increments the counter. If Kafka is down, the greeting is still returned (after at most about 2 s) and a warning is logged.
 
 2. **Start the visitor backend** (Terminal 2):
 ```bash
@@ -86,7 +87,7 @@ Instead of steps 1–4 above (the first-time `./mvnw install -DskipTests` and `n
 |------------|-------------------------------|-----------|---------------------------------------------------------------------------------|
 | `valkey`   | `valkey/valkey:9.1.3-alpine`  | random    | Visit counter storage (Redis-compatible; the `redis` service is commented out)  |
 | `lgtm`     | `grafana/otel-lgtm:0.32.1`    | 3001      | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector           |
-| `kafka`    | `apache/kafka:4.4.0`          | 9092      | Single-node Kafka (KRaft)                                                       |
+| `kafka`    | `apache/kafka:4.4.0`          | 9092      | Single-node Kafka (KRaft); topic `fs-web.visits` carries the visit events       |
 | `mysql`    | `mysql:9.7.4`                 | random    | MySQL (database `fsweb`, user `fsweb`/`fsweb`, root password `root`)            |
 | `postgres` | `postgres:18.6-alpine`        | random    | PostgreSQL (database `fsweb`, user `fsweb`/`fsweb`)                             |
 | `dynamodb` | `amazon/dynamodb-local:3.3.2` | 8000      | Amazon DynamoDB Local (`-sharedDb -inMemory`), endpoint `http://localhost:8000` |
@@ -114,12 +115,12 @@ java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar      # /api/stocks on
 
 Access the application at `http://localhost:8080`. The UI calls `/api/visits` and `/api/stocks` on its own origin, so outside the Vite dev server a reverse proxy (nginx, an ingress, an API gateway) has to route `/api/visits` to the visitor backend, `/api/stocks` to the stocks backend and everything else to the facade backend.
 
-The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the visitor backend URL for the facade backend (`VISITOR_URL`, default `http://localhost:8081`) and Redis for the visitor backend:
+The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the Kafka brokers for the facade and visitor backends (`KAFKA_BOOTSTRAP_SERVERS`, default `localhost:9092`) and Redis for the visitor backend:
 
 ```bash
-VISITOR_URL=http://visitor.example:8081 OTLP_ENDPOINT=http://collector:4318 \
+KAFKA_BOOTSTRAP_SERVERS=kafka.example:9092 OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
-REDIS_HOST=valkey.example OTLP_ENDPOINT=http://collector:4318 \
+KAFKA_BOOTSTRAP_SERVERS=kafka.example:9092 REDIS_HOST=valkey.example OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
@@ -160,26 +161,26 @@ fs-web-springboot/
 
 ### Maven modules
 
-| Module          | Path               | ArtifactId        | Port | Output                                                        |
-|-----------------|--------------------|-------------------|------|---------------------------------------------------------------|
-| Parent          | `.`                | `fs-web-parent`   |      | POM only                                                      |
-| Frontend        | `frontend/`        | `fs-web-frontend` |      | Jar with the built React app in `static/`                     |
-| Backends parent | `backends/`        | `fs-web-backends` |      | POM only                                                      |
-| Facade backend  | `backends/facade`  | `facade`          | 8080 | Executable Spring Boot JAR: `/api/hello`, serves the frontend |
-| Visitor backend | `backends/visitor` | `visitor`         | 8081 | Executable Spring Boot JAR: `/api/visits` (Valkey counter)    |
-| Stocks backend  | `backends/stocks`  | `stocks`          | 8082 | Executable Spring Boot JAR: `/api/stocks` (in-memory list)    |
+| Module          | Path               | ArtifactId        | Port | Output                                                                                      |
+|-----------------|--------------------|-------------------|------|---------------------------------------------------------------------------------------------|
+| Parent          | `.`                | `fs-web-parent`   |      | POM only                                                                                    |
+| Frontend        | `frontend/`        | `fs-web-frontend` |      | Jar with the built React app in `static/`                                                   |
+| Backends parent | `backends/`        | `fs-web-backends` |      | POM only                                                                                    |
+| Facade backend  | `backends/facade`  | `facade`          | 8080 | Executable Spring Boot JAR: `/api/hello`, serves the frontend, publishes to `fs-web.visits` |
+| Visitor backend | `backends/visitor` | `visitor`         | 8081 | Executable Spring Boot JAR: `/api/visits` (Valkey counter), consumes `fs-web.visits`        |
+| Stocks backend  | `backends/stocks`  | `stocks`          | 8082 | Executable Spring Boot JAR: `/api/stocks` (in-memory list)                                  |
 
-To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md), the facade → visitor call in [docs/008-hello-counts-visits.md](docs/008-hello-counts-visits.md) and the stocks backend in [docs/009-stocks-service.md](docs/009-stocks-service.md).
+To add another backend, see [docs/004-multi-module-backends.md](docs/004-multi-module-backends.md); the visitor backend is described in [docs/007-visitor-service.md](docs/007-visitor-service.md), the stocks backend in [docs/009-stocks-service.md](docs/009-stocks-service.md) and the facade → Kafka → visitor visit events in [docs/011-kafka-visit-events.md](docs/011-kafka-visit-events.md) (which replaced the REST call of [docs/008-hello-counts-visits.md](docs/008-hello-counts-visits.md)).
 
 ## API Endpoints
 
-| Endpoint                       | Backend   | Description                                                                                        |
-|--------------------------------|-----------|----------------------------------------------------------------------------------------------------|
-| `GET /api/hello?name=YourName` | `facade`  | Returns a greeting message; also records a visit (calls `POST /api/visits` on the visitor backend) |
-| `GET /api/visits`              | `visitor` | Returns the current visit count from Valkey (`{"count": n}`)                                       |
-| `POST /api/visits`             | `visitor` | Increments the visit count and returns the new value                                               |
-| `GET /api/stocks`              | `stocks`  | Returns all stocks (`[{"symbol","name","price"}, …]`)                                              |
-| `GET /api/stocks/{symbol}`     | `stocks`  | Returns one stock by symbol (case-insensitive); 404 if unknown                                     |
+| Endpoint                       | Backend   | Description                                                                                                           |
+|--------------------------------|-----------|-----------------------------------------------------------------------------------------------------------------------|
+| `GET /api/hello?name=YourName` | `facade`  | Returns a greeting message; also publishes a visit event to Kafka (`fs-web.visits`), which the visitor backend counts |
+| `GET /api/visits`              | `visitor` | Returns the current visit count from Valkey (`{"count": n}`)                                                          |
+| `POST /api/visits`             | `visitor` | Increments the visit count and returns the new value                                                                  |
+| `GET /api/stocks`              | `stocks`  | Returns all stocks (`[{"symbol","name","price"}, …]`)                                                                 |
+| `GET /api/stocks/{symbol}`     | `stocks`  | Returns one stock by symbol (case-insensitive); 404 if unknown                                                        |
 
 ## Running Tests
 
