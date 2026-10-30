@@ -8,22 +8,22 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Maven modules** (multi-module build, root `pom.xml` is the parent and aggregator, `org.fsweb:fs-web-parent`, packaging `pom`):
 
-| Module          | Path              | ArtifactId        | Purpose                                                            |
-|-----------------|-------------------|-------------------|--------------------------------------------------------------------|
-| Frontend        | `frontend/`       | `fs-web-frontend` | Builds the React app; jar holds `static/**`                        |
-| Backends parent | `backends/`       | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)             |
-| Facade backend  | `backends/facade` | `facade`          | Spring Boot app; serves the API and the frontend jar               |
+| Module          | Path               | ArtifactId        | Purpose                                                              |
+|-----------------|--------------------|-------------------|----------------------------------------------------------------------|
+| Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                          |
+| Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)               |
+| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`; serves the frontend jar   |
+| Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey   |
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backend (`backends/facade`):**
-- **Base Package**: `org.fsweb.facade`
+**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080) and `backends/visitor` (base package `org.fsweb.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`). Shared settings:
+- **Base Package**: `org.fsweb.<backend>`
 - **Java Version**: 25
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
-- **Main Application Class**: `FacadeApplication`
 - **Configuration**: Uses `application.yml` for configuration
 - **Build Tool**: Maven via Maven Wrapper 3.3.4 (`./mvnw`, `mvnw.cmd` on Windows), pinned to Maven 3.9.16 in `.mvn/wrapper/maven-wrapper.properties`; use the wrapper instead of a global `mvn`
 
@@ -37,7 +37,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 **Local services (Docker Compose):**
 - `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out) and `lgtm` (Grafana OTel LGTM stack)
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
-- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/facade` and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
+- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/<name>` (both backends share the containers) and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
@@ -48,20 +48,21 @@ This is a full-stack web application with Spring Boot backend and React frontend
 ### Full-Stack Development (Recommended)
 For development with hot reload:
 1. **First time only**: `./mvnw install -DskipTests` (installs the parent POM and builds the `fs-web-frontend` jar the backend depends on)
-2. **Start backend**: `./mvnw spring-boot:run -pl backends/facade` (runs on port 8080)
-3. **Start frontend** (in separate terminal): `cd frontend && npm run dev` (runs on port 3000)
-4. Access the app at `http://localhost:3000` (Vite proxies API calls to port 8080)
+2. **Start facade backend**: `./mvnw spring-boot:run -pl backends/facade` (runs on port 8080)
+3. **Start visitor backend** (separate terminal): `./mvnw spring-boot:run -pl backends/visitor` (runs on port 8081)
+4. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
+5. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081 and other `/api/*` calls to 8080)
 
 ### Production Build
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
-- **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar`
-- Access at `http://localhost:8080`
+- **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar` and `java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar`
+- Access at `http://localhost:8080`; outside the Vite dev server a reverse proxy must route `/api/visits` to 8081
 
 ### Backend Only (Maven Wrapper)
 Run from the project root. `-pl backends/<name>` selects one module; add `-am` to also build the modules it depends on.
 - **Build all modules**: `./mvnw clean install`
 - **Build one backend**: `./mvnw clean install -pl backends/facade -am`
-- **Run application**: `./mvnw spring-boot:run -pl backends/facade`
+- **Run application**: `./mvnw spring-boot:run -pl backends/facade` or `./mvnw spring-boot:run -pl backends/visitor`
 - **Run tests (all modules)**: `./mvnw test`
 - **Run single test**: `./mvnw test -pl backends/facade -Dtest=ClassName#methodName`
 - **Package**: `./mvnw package`
@@ -83,27 +84,43 @@ fs-web-springboot/
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
 │   ├── compose.yaml                     # Valkey + Grafana LGTM (dev), shared by all backends
-│   └── facade/                          # Facade backend module (artifactId facade)
+│   ├── facade/                          # Facade backend module (artifactId facade, port 8080)
+│   │   ├── pom.xml
+│   │   └── src/
+│   │       ├── main/
+│   │       │   ├── java/org/fsweb/facade/
+│   │       │   │   ├── FacadeApplication.java   # Main Spring Boot application
+│   │       │   │   ├── config/                  # Configuration classes
+│   │       │   │   │   ├── WebConfig.java       # SPA routing configuration
+│   │       │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
+│   │       │   │   └── controller/              # REST API controllers
+│   │       │   │       └── HelloController.java
+│   │       │   └── resources/
+│   │       │       ├── application.yml          # Backend configuration
+│   │       │       ├── application-prod.yml     # Production OTLP settings (env vars)
+│   │       │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
+│   │       └── test/
+│   │           └── java/org/fsweb/facade/
+│   │               └── FacadeApplicationTests.java
+│   └── visitor/                         # Visitor backend module (artifactId visitor, port 8081)
 │       ├── pom.xml
 │       └── src/
 │           ├── main/
-│           │   ├── java/org/fsweb/facade/
-│           │   │   ├── FacadeApplication.java   # Main Spring Boot application
-│           │   │   ├── config/                  # Configuration classes
-│           │   │   │   ├── WebConfig.java       # SPA routing configuration
-│           │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
-│           │   │   ├── controller/              # REST API controllers
-│           │   │   │   ├── HelloController.java
-│           │   │   │   └── VisitController.java # /api/visits (Redis counter)
+│           │   ├── java/org/fsweb/visitor/
+│           │   │   ├── VisitorApplication.java  # Main Spring Boot application
+│           │   │   ├── config/
+│           │   │   │   └── OpenTelemetryLogbackConfig.java
+│           │   │   ├── controller/
+│           │   │   │   └── VisitController.java # /api/visits (Valkey counter)
 │           │   │   ├── dto/                     # API records (VisitCount)
-│           │   │   └── service/                 # Business logic (VisitCounterService)
+│           │   │   └── service/                 # VisitCounterService (StringRedisTemplate)
 │           │   └── resources/
-│           │       ├── application.yml          # Backend configuration
+│           │       ├── application.yml          # Port 8081, Docker Compose file
 │           │       ├── application-prod.yml     # Production Redis/OTLP settings (env vars)
-│           │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
+│           │       └── logback-spring.xml
 │           └── test/
-│               └── java/org/fsweb/facade/
-│                   └── FacadeApplicationTests.java
+│               └── java/org/fsweb/visitor/
+│                   └── VisitorApplicationTests.java
 ├── frontend/                            # Frontend module (artifactId fs-web-frontend)
 │   ├── pom.xml                          # Runs npm install / npm run build via frontend-maven-plugin
 │   ├── src/
@@ -131,7 +148,7 @@ fs-web-springboot/
 - **Configuration** (`@Configuration`): Spring configuration classes
 
 ### Spring Boot Conventions
-- Application entry point: `FacadeApplication` class with `@SpringBootApplication` and `main()` method
+- Application entry point: one `@SpringBootApplication` class with a `main()` method per backend (`FacadeApplication`, `VisitorApplication`)
 - Configuration: `application.yml` in each backend's `src/main/resources/`
 - Use dependency injection via constructor injection (preferred) or `@Autowired`
 - Exception handling: Use `@ControllerAdvice` for global exception handling
@@ -155,6 +172,7 @@ fs-web-springboot/
 - All backend API endpoints are prefixed with `/api`
 - Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
 - This works in both dev (proxied) and production (same origin)
+- Endpoint ownership: `/api/visits` → `visitor` (8081); everything else → `facade` (8080). In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of both JARs must route `/api/visits` to the visitor backend.
 
 
 ## Custom Conventions

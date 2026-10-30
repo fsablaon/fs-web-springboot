@@ -1,4 +1,4 @@
-package org.fsweb.facade.service;
+package org.fsweb.visitor.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class VisitCounterService {
 
+    /** Same key the facade (formerly demo) backend used, so the existing count carries over. */
     static final String VISITS_KEY = "fs-web:visits";
 
     private final StringRedisTemplate redisTemplate;

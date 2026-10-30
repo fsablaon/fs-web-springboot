@@ -20,6 +20,7 @@
 
     <modules>
         <module>facade</module>
+        <module>visitor</module>
     </modules>
 
     <properties>
