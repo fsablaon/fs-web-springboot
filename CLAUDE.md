@@ -56,6 +56,8 @@ For development with hot reload:
 5. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
 6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080)
 
+Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Design in `docs/010-dev-start-scripts.md`.
+
 ### Production Build
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
 - **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar`, `java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar` and `java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar`
@@ -160,6 +162,7 @@ fs-web-springboot/
 │   ├── tsconfig.json                    # TypeScript configuration
 │   ├── package.json                     # Frontend dependencies
 │   └── target/classes/static/           # Built React app (generated)
+├── scripts/                             # dev.sh (bash) and dev.cmd + dev.ps1 (Windows): start/stop all dev servers together
 ├── docs/                                # Design docs
 ├── .mvn/wrapper/                        # maven-wrapper.properties (Maven version)
 └── mvnw / mvnw.cmd                      # Maven Wrapper scripts (Unix / Windows)
@@ -207,6 +210,7 @@ fs-web-springboot/
 - Always create a branch for new implementation work
 - Always summary the task and place summary in docs directory, named `docs/NNN-<topic>.md` where `NNN` is the next three-digit number (e.g. `005-<topic>.md`), so the files sort in the order the changes were made
 - Format markdown tables in human readable form
+- Keep separate features/tasks in separate worktrees (`.worktrees/<name>` on branch `feature/<name>`); use the main branch unless specified
 
 # Verify changes
 - Always run a `mvn clean install` or `./mvnw.cmd clean install` (windows)

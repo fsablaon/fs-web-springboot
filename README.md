@@ -67,6 +67,17 @@ The frontend will run on `http://localhost:3000`
 
 The Vite dev server proxies `/api/visits` to the visitor backend (8081), `/api/stocks` to the stocks backend (8082) and every other `/api/*` request to the facade backend (8080), giving you hot reload for both frontend and backend changes.
 
+### Start everything with one command
+
+Instead of steps 1–4 above (the first-time `./mvnw install -DskipTests` and `npm install` are still needed):
+
+| Platform            | Command                | Backends only                  | Servers are stopped when                                                      |
+|---------------------|------------------------|--------------------------------|-------------------------------------------------------------------------------|
+| Linux / macOS / WSL | `scripts/dev.sh`       | `scripts/dev.sh --no-frontend` | You press Ctrl+C, the script is killed (SIGTERM/SIGHUP), or one server exits  |
+| Windows             | `scripts\dev.cmd`      | `scripts\dev.cmd -NoFrontend`  | You press Ctrl+C in its window, close that window, or its process is killed   |
+
+`dev.sh` runs all servers in one terminal with `[facade]`/`[visitor]`/`[stocks]`/`[frontend]` prefixes; `dev.cmd` opens one window per server. Details in `docs/010-dev-start-scripts.md`.
+
 ### Local Services (Docker Compose)
 
 `backends/compose.yaml` defines the services used in development, shared by all backends:
