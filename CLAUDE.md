@@ -35,9 +35,9 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Location**: `frontend/` directory
 
 **Local services (Docker Compose):**
-- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `redis` (Redis 8) and `lgtm` (Grafana OTel LGTM stack)
+- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out) and `lgtm` (Grafana OTel LGTM stack)
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
-- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/demo` and creates the Redis and OTLP connection details automatically; do not hardcode hosts/ports for dev
+- `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/demo` and creates the Redis and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
@@ -82,7 +82,7 @@ fs-web-springboot/
 ├── pom.xml                              # Parent + aggregator POM (packaging pom)
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
-│   ├── compose.yaml                     # Redis + Grafana LGTM (dev), shared by all backends
+│   ├── compose.yaml                     # Valkey + Grafana LGTM (dev), shared by all backends
 │   └── demo/                            # Demo backend module (artifactId demo)
 │       ├── pom.xml
 │       └── src/

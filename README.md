@@ -59,10 +59,10 @@ The Vite dev server will proxy API requests to the Spring Boot backend, giving y
 
 `backends/compose.yaml` defines the services used in development, shared by all backends:
 
-| Service | Image | Purpose |
-|---------|-------|---------|
-| `redis` | `redis:8.10-alpine` | Visit counter storage |
-| `lgtm` | `grafana/otel-lgtm:0.32.1` | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector |
+| Service  | Image                        | Purpose                                                                        |
+|----------|------------------------------|--------------------------------------------------------------------------------|
+| `valkey` | `valkey/valkey:9.1.3-alpine` | Visit counter storage (Redis-compatible; the `redis` service is commented out) |
+| `lgtm`   | `grafana/otel-lgtm:0.32.1`   | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector          |
 
 `./mvnw spring-boot:run -pl backends/demo` starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
@@ -103,7 +103,7 @@ fs-web-springboot/
 ├── pom.xml                # Parent + aggregator POM (shared versions and plugin settings)
 ├── backends/
 │   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
-│   ├── compose.yaml       # Redis + Grafana LGTM for local development (shared by all backends)
+│   ├── compose.yaml       # Valkey + Grafana LGTM for local development (shared by all backends)
 │   └── demo/              # Demo backend module
 │       ├── pom.xml
 │       ├── src/main/java/       # Spring Boot backend code
