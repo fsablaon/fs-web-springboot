@@ -1,4 +1,4 @@
-# 011 – JDK 25 through a Maven toolchain
+# 012 – JDK 25 through a Maven toolchain
 
 ## Summary
 

@@ -45,5 +45,5 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# Linux JDK 25 + Maven cache for the Claude desktop app linked VM (docs/011-jdk25-toolchain.md)
+# Linux JDK 25 + Maven cache for the Claude desktop app linked VM (docs/012-jdk25-toolchain.md)
 /.vm/

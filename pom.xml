@@ -55,7 +55,7 @@
 
         <plugins>
             <!-- Selects a JDK 25 toolchain for every module (bound to validate). The compiler,
-                 surefire and spring-boot:run/start use it; see docs/011-dev-scripts-java25.md -->
+                 surefire and spring-boot:run/start use it; see docs/012-jdk25-toolchain.md -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-toolchains-plugin</artifactId>

@@ -22,7 +22,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade records a visit through `VisitorClient` (`POST {facade.visitor.base-url}/api/visits`, RestClient; design in `docs/008-hello-counts-visits.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
-- **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/011-jdk25-toolchain.md`
+- **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/012-jdk25-toolchain.md`
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
 - **Configuration**: Uses `application.yml` for configuration
