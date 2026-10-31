@@ -36,11 +36,11 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Location**: `frontend/` directory
 
 **Local services (Docker Compose):**
-- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out), `lgtm` (Grafana OTel LGTM stack), `kafka` (KRaft, fixed port 9092), `mysql` (MySQL 9.7 LTS, db/user/password `fsweb`), `postgres` (PostgreSQL 18, db/user/password `fsweb`) and `dynamodb` (DynamoDB Local, fixed port 8000, `-sharedDb -inMemory`)
+- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out), `lgtm` (Grafana OTel LGTM stack), `kafka` (KRaft, fixed port 9092 for the host, `kafka:19092` inside the Compose network), `kafka-ui` (Kafbat UI on `http://localhost:8090`, not a Boot service connection), `mysql` (MySQL 9.7 LTS, db/user/password `fsweb`), `postgres` (PostgreSQL 18, db/user/password `fsweb`) and `dynamodb` (DynamoDB Local, fixed port 8000, `-sharedDb -inMemory`)
 - `mysql` and `postgres` both produce `JdbcConnectionDetails`; a backend with a DataSource must label the one it does not use with `org.springframework.boot.ignore: true` (or Boot fails with two candidates). DynamoDB Local has no Boot service connection: configure the endpoint `http://localhost:8000` explicitly. Details in `docs/008-mysql-postgres-dynamodb-compose.md`
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
 - `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/<name>` (all backends share the containers) and creates the Redis, Kafka (`spring.kafka.bootstrap-servers`) and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
-- Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
+- Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server). Project dashboards live in `backends/grafana/dashboards/*.json` and are bind-mounted into the `lgtm` container (provider `backends/grafana/dashboards-provisioning.yaml`, folder `fs-web`); add a dashboard by dropping its JSON there. Kafka UI: `http://localhost:8090`. Details in `docs/014-kafka-ui-and-dashboard.md`
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
 - Design notes: `docs/001-docker-compose-observability.md`
@@ -88,7 +88,8 @@ fs-web-springboot/
 ├── pom.xml                              # Parent + aggregator POM (packaging pom)
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
-│   ├── compose.yaml                     # Valkey, LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev), shared by all backends
+│   ├── compose.yaml                     # Valkey, LGTM, Kafka, Kafka UI, MySQL, PostgreSQL, DynamoDB Local (dev), shared by all backends
+│   ├── grafana/                         # Grafana provisioning mounted into lgtm: dashboards-provisioning.yaml + dashboards/*.json
 │   ├── facade/                          # Facade backend module (artifactId facade, port 8080)
 │   │   ├── pom.xml
 │   │   └── src/

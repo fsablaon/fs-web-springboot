@@ -83,18 +83,20 @@ Instead of steps 1–4 above (the first-time `./mvnw install -DskipTests` and `n
 
 `backends/compose.yaml` defines the services used in development, shared by all backends:
 
-| Service    | Image                         | Host port | Purpose                                                                         |
-|------------|-------------------------------|-----------|---------------------------------------------------------------------------------|
-| `valkey`   | `valkey/valkey:9.1.3-alpine`  | random    | Visit counter storage (Redis-compatible; the `redis` service is commented out)  |
-| `lgtm`     | `grafana/otel-lgtm:0.32.1`    | 3001      | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector           |
-| `kafka`    | `apache/kafka:4.4.0`          | 9092      | Single-node Kafka (KRaft); topic `fs-web.visits` carries the visit events       |
-| `mysql`    | `mysql:9.7.4`                 | random    | MySQL (database `fsweb`, user `fsweb`/`fsweb`, root password `root`)            |
-| `postgres` | `postgres:18.6-alpine`        | random    | PostgreSQL (database `fsweb`, user `fsweb`/`fsweb`)                             |
-| `dynamodb` | `amazon/dynamodb-local:3.3.2` | 8000      | Amazon DynamoDB Local (`-sharedDb -inMemory`), endpoint `http://localhost:8000` |
+| Service    | Image                            | Host port | Purpose                                                                                                                                            |
+|------------|----------------------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `valkey`   | `valkey/valkey:9.1.3-alpine`     | random    | Visit counter storage (Redis-compatible; the `redis` service is commented out)                                                                     |
+| `lgtm`     | `grafana/otel-lgtm:0.32.1`       | 3001      | Grafana, Loki (logs), Tempo (traces), Mimir (metrics), OTel Collector                                                                              |
+| `kafka`    | `apache/kafka:4.4.0`             | 9092      | Single-node Kafka (KRaft); topic `fs-web.visits` carries the visit events; `localhost:9092` for the host, `kafka:19092` inside the Compose network |
+| `kafka-ui` | `ghcr.io/kafbat/kafka-ui:v1.5.0` | 8090      | Kafka UI: topics, offsets (message counts), consumer lag, browse messages → `http://localhost:8090`                                                |
+| `mysql`    | `mysql:9.7.4`                    | random    | MySQL (database `fsweb`, user `fsweb`/`fsweb`, root password `root`)                                                                               |
+| `postgres` | `postgres:18.6-alpine`           | random    | PostgreSQL (database `fsweb`, user `fsweb`/`fsweb`)                                                                                                |
+| `dynamodb` | `amazon/dynamodb-local:3.3.2`    | 8000      | Amazon DynamoDB Local (`-sharedDb -inMemory`), endpoint `http://localhost:8000`                                                                    |
 
 `./mvnw spring-boot:run -pl backends/facade` (or `-pl backends/visitor`, `-pl backends/stocks`) starts these containers automatically (via `spring-boot-docker-compose`) and connects the app to them, so no hosts, ports or OTLP endpoints are configured for development. All backends share the same containers; the first one started creates them. The containers keep running after the app stops (`lifecycle-management: start-only`).
 
-- **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics; service names `facade`, `visitor` and `stocks`)
+- **Grafana:** `http://localhost:3001` (Explore → Tempo for traces, Loki for logs, Prometheus for metrics; service names `facade`, `visitor` and `stocks`). Project dashboards are provisioned from `backends/grafana/dashboards/` into the `fs-web` folder (Dashboards → fs-web → "Kafka: visit events")
+- **Kafka UI:** `http://localhost:8090` (topic `fs-web.visits`: partitions and offsets, messages, consumer group `visitor` and its lag). Details in [docs/014-kafka-ui-and-dashboard.md](docs/014-kafka-ui-and-dashboard.md)
 - **Stop the containers:** `docker compose -p fs-web-springboot down` (add `-v` to also delete the MySQL/PostgreSQL data volumes)
 - **Random host ports** (for a DB client): `docker compose -p fs-web-springboot port mysql 3306`, `... port postgres 5432`
 - No backend uses `mysql`, `postgres` or `dynamodb` yet; they are ready for the next service. See [docs/008-mysql-postgres-dynamodb-compose.md](docs/008-mysql-postgres-dynamodb-compose.md) for how a backend connects to them.
