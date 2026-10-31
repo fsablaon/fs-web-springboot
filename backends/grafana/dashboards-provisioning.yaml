@@ -1,0 +1,18 @@
+# Grafana dashboard provider for the project dashboards in backends/grafana/dashboards/.
+# Mounted into the lgtm container as /otel-lgtm/grafana/conf/provisioning/dashboards/fs-web.yaml
+# (see backends/compose.yaml). Grafana loads every *.json in `path` into the "fs-web" folder and
+# re-reads the files every `updateIntervalSeconds`.
+apiVersion: 1
+
+providers:
+  - name: fs-web
+    folder: fs-web
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    # Edits made in the Grafana UI are kept until the file changes; export the JSON back into
+    # the repo to make them permanent.
+    allowUiUpdates: true
+    options:
+      path: /otel-lgtm/grafana/conf/provisioning/dashboards/fs-web
+      foldersFromFilesStructure: false
