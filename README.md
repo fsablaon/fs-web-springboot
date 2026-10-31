@@ -129,6 +129,18 @@ OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
+### Run in Containers
+
+The three backends can also run as containers next to the services above, built from `backends/Dockerfile` (one Maven build, one image per backend) and started with the Compose profile `apps`:
+
+```bash
+docker compose -f backends/compose.yaml --profile apps up --build -d   # build the images and start everything
+docker compose -p fs-web-springboot ps                                 # facade, visitor, stocks, gateway (healthy) + the services
+docker compose -p fs-web-springboot down                               # stop and remove everything
+```
+
+Open `http://localhost:8088`: an nginx `gateway` routes `/api/visits` to the visitor backend, `/api/stocks` to the stocks backend and everything else to the facade backend (the same table as the Vite proxy). The backends are also published on 8080–8082, so a backend runs either on the host (`spring-boot:run`) or as a container, not both. The containers run the packaged JARs with the `prod` profile and the environment variables above, pointing at the Compose service names (`kafka:19092`, `valkey`, `lgtm:4318`). Design, decisions and more commands in [docs/015-backends-in-containers.md](docs/015-backends-in-containers.md).
+
 The Maven build automatically:
 1. Installs Node.js and npm (via frontend-maven-plugin, in the `frontend` module)
 2. Installs frontend dependencies
@@ -142,7 +154,10 @@ fs-web-springboot/
 ├── pom.xml                # Parent + aggregator POM (shared versions and plugin settings)
 ├── backends/
 │   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
-│   ├── compose.yaml       # Valkey, Grafana LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev, shared by all backends)
+│   ├── compose.yaml       # Valkey, Grafana LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev, shared by all backends);
+│   │                      #   profile "apps": the backends as containers + nginx gateway (docs/015)
+│   ├── Dockerfile         # Builds the backend images (targets facade, visitor, stocks); context is the project root
+│   ├── gateway/nginx.conf # Reverse proxy for the containerized backends (http://localhost:8088)
 │   ├── facade/            # Facade backend module (UI + /api/hello, port 8080)
 │   │   ├── pom.xml
 │   │   ├── src/main/java/       # Spring Boot backend code
@@ -159,7 +174,8 @@ fs-web-springboot/
 │   ├── pom.xml            # Builds the React app into a jar of static resources
 │   ├── src/               # React components and TypeScript
 │   └── vite.config.ts     # Vite configuration with proxy
-└── docs/                  # Design docs
+├── docs/                  # Design docs
+└── .dockerignore          # Build context filter for backends/Dockerfile
 ```
 
 ### Maven modules

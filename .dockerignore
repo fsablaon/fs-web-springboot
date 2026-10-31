@@ -1,0 +1,24 @@
+# Build context for backends/Dockerfile (context = project root). Everything the Maven build
+# does not need stays out, so the context is small and a change to it does not invalidate the
+# build layer.
+.git
+.gitattributes
+.gitignore
+.worktrees
+.vm
+.idea
+.vscode
+**/*.iml
+**/target
+frontend/node_modules
+frontend/node
+frontend/dist
+frontend/.vite
+docs
+scripts
+*.md
+.dockerignore
+backends/Dockerfile
+backends/compose.yaml
+backends/gateway
+backends/grafana

@@ -44,6 +44,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - Containers keep running after the app stops; `docker compose -p fs-web-springboot down` stops them
 - Docker Compose support is skipped in tests and excluded from the packaged JAR; production settings live in `application-prod.yml`
 - Design notes: `docs/001-docker-compose-observability.md`
+- The backends can also run as containers: `docker compose -f backends/compose.yaml --profile apps up --build -d` builds the images from `backends/Dockerfile` (one Maven build of the whole reactor, one target per backend: `facade`, `visitor`, `stocks`; build context is the project root, filtered by `.dockerignore`) and starts them with the `prod` profile and the `application-prod.yml` env vars pointing at the Compose service names (`kafka:19092`, `valkey`, `lgtm:4318`), plus an nginx `gateway` on `http://localhost:8088` (`backends/gateway/nginx.conf`) that routes `/api/visits` → visitor, `/api/stocks` → stocks, rest → facade. The services sit under the Compose profile `apps`, so `spring-boot:run` (no profile) never starts them. Same host ports as the dev flow: a backend runs on the host or as a container, not both. The `kafka` service has two listeners: `localhost:9092` for host clients (what Boot discovers) and `kafka:19092` for containers. Design in `docs/015-backends-in-containers.md`
 
 ## Build & Development Commands
 
@@ -62,6 +63,7 @@ Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.c
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
 - **Run production build**: `java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar`, `java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar` and `java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar`
 - Access at `http://localhost:8080`; outside the Vite dev server a reverse proxy must route `/api/visits` to 8081 and `/api/stocks` to 8082
+- **Run in containers**: `docker compose -f backends/compose.yaml --profile apps up --build -d`, then `http://localhost:8088` (gateway); `docker compose -p fs-web-springboot down` stops everything. Rebuild one image: `... --profile apps up --build -d stocks`. See `docs/015-backends-in-containers.md`
 
 ### Backend Only (Maven Wrapper)
 Run from the project root. `-pl backends/<name>` selects one module; add `-am` to also build the modules it depends on.
@@ -88,8 +90,12 @@ fs-web-springboot/
 ├── pom.xml                              # Parent + aggregator POM (packaging pom)
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
-│   ├── compose.yaml                     # Valkey, LGTM, Kafka, Kafka UI, MySQL, PostgreSQL, DynamoDB Local (dev), shared by all backends
+│   ├── compose.yaml                     # Valkey, LGTM, Kafka, Kafka UI, MySQL, PostgreSQL, DynamoDB Local (dev), shared by all backends;
+│   │                                    #   profile "apps": facade, visitor, stocks containers + nginx gateway (docs/015)
 │   ├── grafana/                         # Grafana provisioning mounted into lgtm: dashboards-provisioning.yaml + dashboards/*.json
+│   ├── Dockerfile                       # Multi-stage build of the backend images; targets facade, visitor, stocks (context = project root)
+│   ├── gateway/
+│   │   └── nginx.conf                   # Reverse proxy for the containerized backends: /api/visits, /api/stocks, rest -> facade
 │   ├── facade/                          # Facade backend module (artifactId facade, port 8080)
 │   │   ├── pom.xml
 │   │   └── src/
@@ -174,6 +180,7 @@ fs-web-springboot/
 │   └── target/classes/static/           # Built React app (generated)
 ├── scripts/                             # dev.sh (bash) and dev.cmd + dev.ps1 (Windows): start/stop all dev servers together
 ├── docs/                                # Design docs
+├── .dockerignore                        # Build context filter for backends/Dockerfile
 ├── .mvn/wrapper/                        # maven-wrapper.properties (Maven version)
 └── mvnw / mvnw.cmd                      # Maven Wrapper scripts (Unix / Windows)
 ```
