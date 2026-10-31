@@ -34,6 +34,26 @@ spring:
       operation-timeout: 2s
       properties:
         default.api.timeout.ms: 2000
+  http:
+    clients:
+      # Defaults for every HTTP client the facade builds. A service client group below
+      # overrides whatever it needs.
+      connect-timeout: 1s
+      read-timeout: 2s
+      redirects: dont-follow
+    serviceclient:
+      # One group per downstream service (see config/HttpServiceClientsConfig). Each group has
+      # its own RestClient, request factory and settings. Other per-group keys: redirects,
+      # ssl.bundle, default-header.<name>, cookie-handling. In dev the other backends run on
+      # fixed ports; in production application-prod.yml takes the URLs from env vars.
+      visitor:
+        # GET /api/visits for /api/overview; short read timeout, the count is informational
+        base-url: http://localhost:8081
+        read-timeout: 1s
+      stocks:
+        # GET /api/stocks for /api/overview; a real quote source would be slower than the counter
+        base-url: http://localhost:8082
+        read-timeout: 3s
 
 server:
   port: 8080

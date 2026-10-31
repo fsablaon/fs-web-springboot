@@ -1,9 +1,16 @@
 # Production profile: activate with --spring.profiles.active=prod
-# Docker Compose support is not included in the packaged JAR, so the Kafka brokers and
-# OTLP endpoint must be set explicitly (environment variables shown below).
+# Docker Compose support is not included in the packaged JAR, so the Kafka brokers, the
+# downstream service URLs and the OTLP endpoint must be set explicitly (environment
+# variables shown below).
 spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  http:
+    serviceclient:
+      visitor:
+        base-url: ${VISITOR_URL:http://localhost:8081}
+      stocks:
+        base-url: ${STOCKS_URL:http://localhost:8082}
 
 management:
   tracing:

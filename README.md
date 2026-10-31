@@ -115,10 +115,11 @@ java -jar backends/stocks/target/stocks-0.0.1-SNAPSHOT.jar      # /api/stocks on
 
 Access the application at `http://localhost:8080`. The UI calls `/api/visits` and `/api/stocks` on its own origin, so outside the Vite dev server a reverse proxy (nginx, an ingress, an API gateway) has to route `/api/visits` to the visitor backend, `/api/stocks` to the stocks backend and everything else to the facade backend.
 
-The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the Kafka brokers for the facade and visitor backends (`KAFKA_BOOTSTRAP_SERVERS`, default `localhost:9092`) and Redis for the visitor backend:
+The packaged JARs do not include Docker Compose support. Run them with the `prod` profile and set the OTLP endpoint, the Kafka brokers for the facade and visitor backends (`KAFKA_BOOTSTRAP_SERVERS`, default `localhost:9092`), the downstream URLs the facade's `/api/overview` calls (`VISITOR_URL`, `STOCKS_URL`, defaults `http://localhost:8081` / `:8082`) and Redis for the visitor backend:
 
 ```bash
-KAFKA_BOOTSTRAP_SERVERS=kafka.example:9092 OTLP_ENDPOINT=http://collector:4318 \
+KAFKA_BOOTSTRAP_SERVERS=kafka.example:9092 VISITOR_URL=http://visitor.example:8081 STOCKS_URL=http://stocks.example:8082 \
+  OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/facade/target/facade-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 KAFKA_BOOTSTRAP_SERVERS=kafka.example:9092 REDIS_HOST=valkey.example OTLP_ENDPOINT=http://collector:4318 \
   java -jar backends/visitor/target/visitor-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
