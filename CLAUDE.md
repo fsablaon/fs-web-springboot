@@ -56,7 +56,7 @@ For development with hot reload:
 5. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
 6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080)
 
-Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Design in `docs/010-dev-start-scripts.md`.
+Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Both select a JDK 25 for the backends (`--java-home` / `-JavaHome`, else `JAVA_HOME`, else `java` on `PATH`, else common install locations) and exit with a message if none is found. Design in `docs/010-dev-start-scripts.md`; JDK selection in `docs/011-dev-scripts-java25.md`.
 
 ### Production Build
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)

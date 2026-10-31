@@ -23,7 +23,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 
 ## Prerequisites
 
-- JDK 25 or later
+- JDK 25 (`./mvnw` by hand also works with a later JDK; the dev scripts below look for JDK 25 specifically)
 - No Maven install needed: the Maven Wrapper (`./mvnw`, `mvnw.cmd` on Windows) downloads Maven 3.9.16 on first run
 - Node.js 26+ and npm 12+ (for frontend development)
 - Docker Desktop (or another Docker engine with `docker compose`), running before you start the backend
@@ -77,6 +77,8 @@ Instead of steps 1–4 above (the first-time `./mvnw install -DskipTests` and `n
 | Windows             | `scripts\dev.cmd`      | `scripts\dev.cmd -NoFrontend`  | You press Ctrl+C in its window, close that window, or its process is killed   |
 
 `dev.sh` runs all servers in one terminal with `[facade]`/`[visitor]`/`[stocks]`/`[frontend]` prefixes; `dev.cmd` opens one window per server. Details in `docs/010-dev-start-scripts.md`.
+
+Both scripts run the backends with a JDK 25 and print which one: `--java-home <dir>` / `-JavaHome <dir>` if given, else `JAVA_HOME` if it is a JDK 25, else `java` on `PATH` if it is, else the usual install locations (`~/.jdks`, SDKMAN, `/usr/lib/jvm`, `Program Files\...`). They stop with a message if no JDK 25 is found. Details in `docs/011-dev-scripts-java25.md`.
 
 ### Local Services (Docker Compose)
 

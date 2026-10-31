@@ -15,7 +15,13 @@
 # SIGKILL after 15 s for anything still alive. SIGKILL of this script itself
 # cannot be caught; in that case stop the leftovers with `kill` by hand.
 #
-# Usage: scripts/dev.sh [--no-frontend]
+# The backends are built and run with JDK 25 (the project's java.version). The
+# JDK is taken from, in order: --java-home, $JAVA_HOME (if it is 25), `java` on
+# $PATH (if it is 25), then common install locations (~/.jdks, SDKMAN,
+# /usr/lib/jvm, macOS JavaVirtualMachines, ~/opt). It is exported as JAVA_HOME
+# for ./mvnw. The script stops with a message if no JDK 25 is found.
+#
+# Usage: scripts/dev.sh [--no-frontend] [--java-home <dir>]
 #
 # For Windows (cmd/PowerShell) use scripts\dev.cmd. Git Bash lacks pgrep, so use
 # dev.cmd there as well.
@@ -26,19 +32,109 @@
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
 
+REQUIRED_JAVA=25
+
 NO_FRONTEND=0
-for arg in "$@"; do
-    case "$arg" in
+JAVA_HOME_ARG=""
+while [ $# -gt 0 ]; do
+    case "$1" in
         --no-frontend) NO_FRONTEND=1 ;;
-        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "unknown option: $arg (try --help)" >&2; exit 2 ;;
+        --java-home) [ -n "${2-}" ] || { echo "--java-home needs a directory" >&2; exit 2; }; JAVA_HOME_ARG=$2; shift ;;
+        --java-home=*) JAVA_HOME_ARG=${1#--java-home=} ;;
+        -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
     esac
+    shift
 done
 
 if ! command -v pgrep >/dev/null 2>&1; then
     echo "[dev] pgrep is required (not available in Git Bash; use scripts\\dev.cmd on Windows)" >&2
     exit 1
 fi
+
+# ---------------------------------------------------------------------------
+# JDK selection
+# ---------------------------------------------------------------------------
+
+# Print the feature version (25 for 25.0.1, 1 for 1.8.0) of the JDK in $1.
+# Fails if $1 is not a JDK home (needs bin/javac and the `release` file).
+jdk_version() {
+    [ -x "$1/bin/javac" ] && [ -f "$1/release" ] || return 1
+    sed -n 's/^JAVA_VERSION="\([0-9]*\).*/\1/p' "$1/release"
+}
+
+# Succeeds and prints $1 if it is a JDK of the required version.
+is_required_jdk() {
+    [ -n "$1" ] && [ "$(jdk_version "$1" 2>/dev/null)" = "$REQUIRED_JAVA" ] && echo "$1"
+}
+
+# Home directory of the `java` on $PATH (symlinks resolved), or nothing.
+path_java_home() {
+    local bin
+    bin=$(command -v java 2>/dev/null) || return 1
+    if command -v readlink >/dev/null 2>&1 && readlink -f / >/dev/null 2>&1; then
+        bin=$(readlink -f "$bin")
+    fi
+    echo "$(cd "$(dirname "$bin")/.." 2>/dev/null && pwd)"
+}
+
+# Print every JDK of the required version found in the usual install locations,
+# newest-looking first. Globs that match nothing are skipped.
+find_installed_jdks() {
+    local dir
+    if [ -x /usr/libexec/java_home ]; then                      # macOS
+        dir=$(/usr/libexec/java_home -v "$REQUIRED_JAVA" 2>/dev/null) && is_required_jdk "$dir"
+    fi
+    for dir in \
+        "$HOME"/.jdks/*"$REQUIRED_JAVA"* \
+        "$HOME"/.sdkman/candidates/java/"$REQUIRED_JAVA"* \
+        /usr/lib/jvm/*"$REQUIRED_JAVA"* \
+        /usr/local/lib/jvm/*"$REQUIRED_JAVA"* \
+        /opt/*jdk*"$REQUIRED_JAVA"* \
+        /Library/Java/JavaVirtualMachines/*"$REQUIRED_JAVA"*/Contents/Home \
+        "$HOME"/Library/Java/JavaVirtualMachines/*"$REQUIRED_JAVA"*/Contents/Home \
+        "$HOME"/opt/jdk-"$REQUIRED_JAVA"* \
+        "$HOME"/opt/jdk*"$REQUIRED_JAVA"*; do
+        is_required_jdk "$dir"
+    done | awk '!seen[$0]++' | sort -r
+}
+
+# "JDK 17" or "not a JDK (...)" for the directory $1, for messages.
+describe_jdk() {
+    local v
+    if v=$(jdk_version "$1" 2>/dev/null) && [ -n "$v" ]; then echo "JDK $v"; else echo "not a JDK (no bin/javac or release file)"; fi
+}
+
+select_jdk() {
+    local jdk
+    if [ -n "$JAVA_HOME_ARG" ]; then
+        jdk=$(is_required_jdk "$JAVA_HOME_ARG") || {
+            echo "[dev] --java-home $JAVA_HOME_ARG is $(describe_jdk "$JAVA_HOME_ARG"), need JDK $REQUIRED_JAVA" >&2
+            exit 1
+        }
+        echo "$jdk"; return
+    fi
+    if [ -n "${JAVA_HOME-}" ]; then
+        if jdk=$(is_required_jdk "$JAVA_HOME"); then echo "$jdk"; return; fi
+        echo "[dev] JAVA_HOME=$JAVA_HOME is $(describe_jdk "$JAVA_HOME"), need JDK $REQUIRED_JAVA; looking elsewhere" >&2
+    fi
+    if jdk=$(is_required_jdk "$(path_java_home)"); then echo "$jdk"; return; fi
+    jdk=$(find_installed_jdks | head -n 1)
+    if [ -n "$jdk" ]; then echo "$jdk"; return; fi
+
+    cat >&2 <<EOF
+[dev] no JDK $REQUIRED_JAVA found. Checked --java-home, JAVA_HOME, java on PATH and:
+[dev]   ~/.jdks, ~/.sdkman/candidates/java, /usr/lib/jvm, /usr/local/lib/jvm, /opt,
+[dev]   /Library/Java/JavaVirtualMachines, ~/Library/Java/JavaVirtualMachines, ~/opt
+[dev] Install JDK $REQUIRED_JAVA, or point at one: scripts/dev.sh --java-home <dir>  (or export JAVA_HOME=<dir>)
+EOF
+    exit 1
+}
+
+JAVA_HOME=$(select_jdk) || exit 1
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+echo "[dev] using JDK $REQUIRED_JAVA: $JAVA_HOME ($("$JAVA_HOME/bin/java" -version 2>&1 | grep -v JAVA_TOOL_OPTIONS | head -n 1))"
 
 if [ ! -d "${HOME}/.m2/repository/org/fsweb/fs-web-frontend" ]; then
     echo "[dev] hint: the backends need the parent POM and the fs-web-frontend jar in ~/.m2."
