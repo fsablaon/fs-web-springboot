@@ -24,7 +24,7 @@ A full-stack web application with Spring Boot backend and React frontend.
 
 ## Prerequisites
 
-- JDK 25 or later
+- JDK 25, installed where Maven can find it (`JAVA_HOME`, `~/.jdks` from IntelliJ, SDKMAN, `C:\Program Files\{Java, Amazon Corretto, Eclipse Adoptium, ...}`, `/usr/lib/jvm`, ...). Maven itself may run on any Java 17+: a Maven toolchain makes it compile, test and `spring-boot:run` with JDK 25 (`docs/012-jdk25-toolchain.md`)
 - No Maven install needed: the Maven Wrapper (`./mvnw`, `mvnw.cmd` on Windows) downloads Maven 3.9.16 on first run
 - Node.js 26+ and npm 12+ (for frontend development)
 - Docker Desktop (or another Docker engine with `docker compose`), running before you start the backend

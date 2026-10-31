@@ -22,7 +22,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade publishes a `VisitEvent` (JSON) to the Kafka topic `fs-web.visits` through `VisitEventPublisher` (`KafkaTemplate`); the visitor backend's `VisitEventListener` (`@KafkaListener`, group `visitor`) consumes it and increments the counter. The topic is created by the visitor's `KafkaTopicConfig` (`NewTopic` bean → Boot's `KafkaAdmin` at startup, idempotent); the dev broker's auto-create is the fallback if the facade publishes first. Design in `docs/011-kafka-visit-events.md` (replaced the REST call of `docs/008-hello-counts-visits.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
-- **Java Version**: 25
+- **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/012-jdk25-toolchain.md`
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
 - **Configuration**: Uses `application.yml` for configuration
@@ -217,4 +217,5 @@ fs-web-springboot/
 
 # Verify changes
 - Always run a `mvn clean install` or `./mvnw.cmd clean install` (windows)
+- In the Claude desktop app's linked Linux VM (no JDK 25 there): prefix Maven commands with `. .vm/env.sh &&` (JDK 25, proxy and Maven cache in the gitignored `.vm/`, see `.vm/README.md`). VM commands are killed after about 3 minutes, so build one module at a time with `-pl` if needed
 - Run the backend app `./mvnw spring-boot:run`
