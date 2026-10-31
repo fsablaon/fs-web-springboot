@@ -29,6 +29,13 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- RestClient + HTTP service clients: one client group per downstream service (/api/overview
+             reads the visitor count and the stock list); groups are configured in application.yml -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+
         <!-- Kafka (KafkaTemplate): publishes a visit event per /api/hello call for the visitor backend -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

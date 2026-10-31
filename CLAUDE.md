@@ -8,19 +8,19 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Maven modules** (multi-module build, root `pom.xml` is the parent and aggregator, `org.fsweb:fs-web-parent`, packaging `pom`):
 
-| Module          | Path               | ArtifactId        | Purpose                                                                                              |
-|-----------------|--------------------|-------------------|------------------------------------------------------------------------------------------------------|
-| Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                                                          |
-| Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)                                               |
-| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`; serves the frontend jar; publishes visit events to Kafka  |
-| Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey; consumes visit events from Kafka |
-| Stocks backend  | `backends/stocks`  | `stocks`          | Spring Boot app (port 8082): `/api/stocks` in-memory stock list                                      |
+| Module          | Path               | ArtifactId        | Purpose                                                                                                                                                      |
+|-----------------|--------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                                                                                                                  |
+| Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)                                                                                                       |
+| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`, `/api/overview`; serves the frontend jar; publishes visit events to Kafka; calls `visitor` and `stocks` over HTTP |
+| Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey; consumes visit events from Kafka                                                         |
+| Stocks backend  | `backends/stocks`  | `stocks`          | Spring Boot app (port 8082): `/api/stocks` in-memory stock list                                                                                              |
 
 - Root `pom.xml`: settings for every module (Java version, encoding, Node/npm and `frontend-maven-plugin` versions)
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade publishes a `VisitEvent` (JSON) to the Kafka topic `fs-web.visits` through `VisitEventPublisher` (`KafkaTemplate`); the visitor backend's `VisitEventListener` (`@KafkaListener`, group `visitor`) consumes it and increments the counter. The topic is created by the visitor's `KafkaTopicConfig` (`NewTopic` bean → Boot's `KafkaAdmin` at startup, idempotent); the dev broker's auto-create is the fallback if the facade publishes first. Design in `docs/011-kafka-visit-events.md` (replaced the REST call of `docs/008-hello-counts-visits.md`). Shared settings:
+**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade publishes a `VisitEvent` (JSON) to the Kafka topic `fs-web.visits` through `VisitEventPublisher` (`KafkaTemplate`); the visitor backend's `VisitEventListener` (`@KafkaListener`, group `visitor`) consumes it and increments the counter. The topic is created by the visitor's `KafkaTopicConfig` (`NewTopic` bean → Boot's `KafkaAdmin` at startup, idempotent); the dev broker's auto-create is the fallback if the facade publishes first. Design in `docs/011-kafka-visit-events.md` (replaced the REST call of `docs/008-hello-counts-visits.md`). `GET /api/overview` in facade reads the visit count (`GET /api/visits`) and the stock list (`GET /api/stocks`) over HTTP; the facade's HTTP clients are Spring Boot HTTP service client groups: one `@HttpExchange` interface per downstream in `client/`, registered with `@ImportHttpServices(group = ...)` in `config/HttpServiceClientsConfig.java`, settings in `spring.http.serviceclient.<group>.*` (defaults in `spring.http.clients.*`), failure policy in the `*Client` wrapper; design in `docs/013-facade-http-clients.md`. Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
 - **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/012-jdk25-toolchain.md`
 - **Spring Boot Version**: 4.1.2
@@ -95,20 +95,26 @@ fs-web-springboot/
 │   │       ├── main/
 │   │       │   ├── java/org/fsweb/facade/
 │   │       │   │   ├── FacadeApplication.java   # Main Spring Boot application
+│   │       │   │   ├── client/                  # VisitorApi, StocksApi (@HttpExchange), VisitorClient, StocksClient (failure policy), VisitCount, Stock
 │   │       │   │   ├── config/                  # Configuration classes
 │   │       │   │   │   ├── WebConfig.java       # SPA routing configuration
+│   │       │   │   │   ├── HttpServiceClientsConfig.java  # @ImportHttpServices groups: visitor, stocks
 │   │       │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
 │   │       │   │   ├── controller/              # REST API controllers
-│   │       │   │   │   └── HelloController.java
+│   │       │   │   │   ├── HelloController.java
+│   │       │   │   │   └── OverviewController.java  # /api/overview: visit count + stock list via the HTTP clients
+│   │       │   │   ├── dto/                     # Overview
 │   │       │   │   └── event/                   # VisitEvent, VisitEventProperties, VisitEventPublisher (KafkaTemplate -> fs-web.visits)
 │   │       │   └── resources/
-│   │       │       ├── application.yml          # Backend configuration (Kafka producer, facade.visits.topic)
-│   │       │       ├── application-prod.yml     # Production Kafka brokers and OTLP settings (env vars)
+│   │       │       ├── application.yml          # Backend configuration (Kafka producer, facade.visits.topic, spring.http.serviceclient.*)
+│   │       │       ├── application-prod.yml     # Production Kafka brokers, VISITOR_URL/STOCKS_URL and OTLP settings (env vars)
 │   │       │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
 │   │       └── test/
 │   │           └── java/org/fsweb/facade/
 │   │               ├── FacadeApplicationTests.java
+│   │               ├── config/HttpServiceClientsConfigTests.java  # visitor and stocks groups bind from application.yml
 │   │               ├── controller/HelloControllerTests.java  # Mock KafkaTemplate: one event per greeting, Kafka failures swallowed
+│   │               ├── controller/OverviewControllerTests.java  # Two MockRestServiceServers; each downstream may be down
 │   │               └── event/VisitEventPublisherTests.java   # @EmbeddedKafka: JSON wire format, key, no type header
 │   ├── visitor/                         # Visitor backend module (artifactId visitor, port 8081)
 │   │   ├── pom.xml
@@ -206,7 +212,7 @@ fs-web-springboot/
 - All backend API endpoints are prefixed with `/api`
 - Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
 - This works in both dev (proxied) and production (same origin)
-- Endpoint ownership: `/api/visits` → `visitor` (8081); `/api/stocks` → `stocks` (8082); everything else → `facade` (8080). The facade does not call the visitor backend over HTTP: it publishes visit events to the Kafka topic `fs-web.visits` (`facade.visits.topic`; brokers from Docker Compose in dev, `KAFKA_BOOTSTRAP_SERVERS` in the `prod` profile) and the visitor backend consumes them (`visitor.visits.topic`, group `visitor.visits.group-id`). Both backends have their own `VisitEvent` record with the same JSON fields; records carry no Java type header. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of the JARs must route `/api/visits` to the visitor backend and `/api/stocks` to the stocks backend.
+- Endpoint ownership: `/api/visits` → `visitor` (8081); `/api/stocks` → `stocks` (8082); everything else → `facade` (8080). `/api/hello` does not call the visitor backend over HTTP: it publishes visit events to the Kafka topic `fs-web.visits` (`facade.visits.topic`; brokers from Docker Compose in dev, `KAFKA_BOOTSTRAP_SERVERS` in the `prod` profile) and the visitor backend consumes them (`visitor.visits.topic`, group `visitor.visits.group-id`). Both backends have their own `VisitEvent` record with the same JSON fields; records carry no Java type header. `/api/overview` does call `visitor` and `stocks` over HTTP, at `spring.http.serviceclient.{visitor,stocks}.base-url` (`VISITOR_URL` / `STOCKS_URL` in the `prod` profile), not through the reverse proxy. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of the JARs must route `/api/visits` to the visitor backend and `/api/stocks` to the stocks backend.
 
 
 ## Custom Conventions
