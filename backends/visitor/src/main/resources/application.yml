@@ -11,9 +11,34 @@ spring:
       # Shared by all backends. Relative to the working directory, which is the project
       # root for ./mvnw spring-boot:run (see backends/pom.xml) and for IntelliJ.
       file: backends/compose.yaml
+  kafka:
+    # bootstrap-servers comes from Docker Compose support (apache/kafka image, port 9092) in dev
+    # and from application-prod.yml in production.
+    consumer:
+      # Count events published before this backend first joined the group (no committed offset yet)
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Wraps the JSON deserializer: a record that is not valid JSON is skipped (logged), not retried forever
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        # Jackson 3 based JSON deserializer (Spring Kafka 4); the Jackson 2 JsonDeserializer has no databind on Boot 4's classpath
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        # Records carry no Java type header (the facade has its own VisitEvent class): always map to ours
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: org.fsweb.visitor.event.VisitEvent
+    listener:
+      # Continues the trace from the facade's traceparent header, so the listener span shows under /api/hello in Grafana
+      observation-enabled: true
 
 server:
   port: 8081   # facade uses 8080
+
+visitor:
+  visits:
+    # Topic the facade backend publishes VisitEvents to (created here at startup if missing)
+    topic: fs-web.visits
+    group-id: visitor
+    partitions: 1
 
 management:
   endpoints:

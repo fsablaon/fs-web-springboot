@@ -13,7 +13,7 @@
 
     <artifactId>facade</artifactId>
     <name>facade</name>
-    <description>Facade backend: REST API (/api/hello), OpenTelemetry; serves the React frontend. Each /api/hello call records a visit in the visitor backend.</description>
+    <description>Facade backend: REST API (/api/hello), OpenTelemetry; serves the React frontend. Each /api/hello call publishes a visit event to Kafka for the visitor backend.</description>
 
     <dependencies>
         <!-- React app (static/**), served by WebConfig -->
@@ -29,10 +29,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- RestClient (auto-configured RestClient.Builder with tracing): facade -> visitor calls -->
+        <!-- Kafka (KafkaTemplate): publishes a visit event per /api/hello call for the visitor backend -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-restclient</artifactId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
 
         <!-- Actuator: health, info and metrics endpoints -->
@@ -58,6 +58,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-docker-compose</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Embedded Kafka broker (KRaft) for the publisher integration test -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- Lombok and spring-boot-starter-test come from backends/pom.xml -->

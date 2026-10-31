@@ -10,16 +10,39 @@ spring:
       # Shared by all backends. Relative to the working directory, which is the project
       # root for ./mvnw spring-boot:run (see backends/pom.xml) and for IntelliJ.
       file: backends/compose.yaml
+  kafka:
+    # bootstrap-servers comes from Docker Compose support (apache/kafka image, port 9092) in dev
+    # and from application-prod.yml in production.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Jackson 3 based JSON serializer (Spring Kafka 4); the Jackson 2 JsonSerializer has no databind on Boot 4's classpath
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        # Do not send the Java class name in a header: the visitor backend has its own VisitEvent class
+        spring.json.add.type.headers: false
+        # Upper bound on how long send() blocks when the broker is unreachable (default 60 s);
+        # /api/hello calls send() on the request thread
+        max.block.ms: 2000
+    template:
+      # Adds the trace context (traceparent) to each record so the visitor backend's listener span
+      # joins the /api/hello trace in Grafana
+      observation-enabled: true
+    admin:
+      # The template observation looks up the cluster id once through KafkaAdmin (retried every 5 min
+      # after a failure). With the broker down this would block the first /api/hello for 30 s + the
+      # admin client's 60 s default API timeout; these bound it to about 2 s.
+      operation-timeout: 2s
+      properties:
+        default.api.timeout.ms: 2000
 
 server:
   port: 8080
 
 facade:
-  visitor:
-    # Visitor backend; each /api/hello call POSTs to <base-url>/api/visits
-    base-url: http://localhost:8081
-    connect-timeout: 1s
-    read-timeout: 2s
+  visits:
+    # Each /api/hello call publishes one VisitEvent to this topic; the visitor backend consumes it
+    topic: fs-web.visits
+    source: facade
 
 management:
   endpoints:
