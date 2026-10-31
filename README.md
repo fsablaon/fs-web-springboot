@@ -131,10 +131,11 @@ OTLP_ENDPOINT=http://collector:4318 \
 
 ### Run in Containers
 
-The three backends can also run as containers next to the services above, built from `backends/Dockerfile` (one Maven build, one image per backend) and started with the Compose profile `apps`:
+The three backends can also run as containers next to the services above. They live in their own file, `backends/compose.apps.yaml`, so they are never started by accident: `backends/compose.yaml` has only the external services (Valkey, Kafka, Grafana, databases — what `spring-boot:run` starts for you), and `compose.apps.yaml` has the project services, built from `backends/Dockerfile` (one Maven build, one image per backend). It `include`s `compose.yaml`, so this manual step also makes sure the external services are up:
 
 ```bash
-docker compose -f backends/compose.yaml --profile apps up --build -d   # build the images and start everything
+docker compose -f backends/compose.apps.yaml up --build -d            # build the images, start the backends (+ external services)
+docker compose -f backends/compose.apps.yaml rm -sf facade visitor stocks gateway   # stop only the backends
 docker compose -p fs-web-springboot ps                                 # facade, visitor, stocks, gateway (healthy) + the services
 docker compose -p fs-web-springboot down                               # stop and remove everything
 ```
@@ -154,8 +155,8 @@ fs-web-springboot/
 ├── pom.xml                # Parent + aggregator POM (shared versions and plugin settings)
 ├── backends/
 │   ├── pom.xml            # Parent POM for all backends (shared backend build settings)
-│   ├── compose.yaml       # Valkey, Grafana LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev, shared by all backends);
-│   │                      #   profile "apps": the backends as containers + nginx gateway (docs/015)
+│   ├── compose.yaml       # External services: Valkey, Grafana LGTM, Kafka, Kafka UI, MySQL, PostgreSQL, DynamoDB Local (dev, shared by all backends)
+│   ├── compose.apps.yaml  # Project services as containers: facade, visitor, stocks + nginx gateway; includes compose.yaml; manual start (docs/015)
 │   ├── Dockerfile         # Builds the backend images (targets facade, visitor, stocks); context is the project root
 │   ├── gateway/nginx.conf # Reverse proxy for the containerized backends (http://localhost:8088)
 │   ├── facade/            # Facade backend module (UI + /api/hello, port 8080)

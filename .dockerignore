@@ -20,5 +20,6 @@ scripts
 .dockerignore
 backends/Dockerfile
 backends/compose.yaml
+backends/compose.apps.yaml
 backends/gateway
 backends/grafana

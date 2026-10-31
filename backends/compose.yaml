@@ -5,9 +5,9 @@
 # in application.yml. DynamoDB Local is the exception: Boot has no service connection for it,
 # so it uses a fixed host port (see below).
 #
-# The backends themselves can also run as containers (profile "apps", at the end of this file):
-#   docker compose -f backends/compose.yaml --profile apps up --build -d
-# Without the profile (what Spring Boot runs) only the services above the profile start.
+# Only external services live here. The project's own backends are in compose.apps.yaml, which
+# includes this file, so they are started manually and bring these services up with them:
+#   docker compose -f backends/compose.apps.yaml up --build -d
 # Design in docs/015-backends-in-containers.md.
 
 # Keeps the Compose project name (and container names) the same as when this file
@@ -51,7 +51,7 @@ services:
     # and that address differs by where the client runs:
     #   PLAINTEXT_HOST  localhost:9092  for the backends on the host (and the Kafka CLI tools)
     #   PLAINTEXT       kafka:19092     for other containers on the Compose network (kafka-ui, and
-    #                                   the backends when they run as containers, profile "apps")
+    #                                   the backends when they run as containers, compose.apps.yaml)
     # Setting any KAFKA_* variable switches the image from its built-in single-listener config to
     # these variables, so the whole KRaft config has to be given (adapted from the image's
     # docker/examples/docker-compose-files/single-node/plaintext example).
@@ -146,123 +146,6 @@ services:
     working_dir: /home/dynamodblocal
     ports:
       - "8000:8000"   # fixed host port: http://localhost:8000
-
-  # ---------------------------------------------------------------------------------------------
-  # The backends as containers. Compose profile "apps": not started by Spring Boot's Docker
-  # Compose support (it runs `docker compose up` without a profile), only by
-  #   docker compose -f backends/compose.yaml --profile apps up --build -d
-  # Images come from backends/Dockerfile (one Maven build, one target per backend). The apps run
-  # the packaged JARs with the prod profile, so they are configured like a real deployment: through
-  # the environment variables application-prod.yml reads, pointing at the service names above.
-  # Host ports are the same as for ./mvnw spring-boot:run, so run a backend either on the host or
-  # as a container, not both. Design in docs/015-backends-in-containers.md.
-  # ---------------------------------------------------------------------------------------------
-  facade:
-    profiles: ["apps"]
-    image: fs-web/facade:local
-    build:
-      context: ..                    # project root: the build needs pom.xml, frontend/ and backends/
-      dockerfile: backends/Dockerfile
-      target: facade
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      KAFKA_BOOTSTRAP_SERVERS: kafka:19092        # in-network listener, see kafka above
-      VISITOR_URL: http://visitor:8081
-      STOCKS_URL: http://stocks:8082
-      OTLP_ENDPOINT: http://lgtm:4318
-      TRACING_SAMPLING_PROBABILITY: "1.0"         # prod default is 0.1; trace everything locally
-      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
-    depends_on:
-      - kafka
-      - lgtm
-      - visitor
-      - stocks
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 12
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          memory: 768m
-
-  visitor:
-    profiles: ["apps"]
-    image: fs-web/visitor:local
-    build:
-      context: ..
-      dockerfile: backends/Dockerfile
-      target: visitor
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      REDIS_HOST: valkey
-      REDIS_PORT: "6379"
-      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
-      OTLP_ENDPOINT: http://lgtm:4318
-      TRACING_SAMPLING_PROBABILITY: "1.0"
-      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
-    depends_on:
-      - valkey
-      - kafka
-      - lgtm
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 12
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          memory: 768m
-
-  stocks:
-    profiles: ["apps"]
-    image: fs-web/stocks:local
-    build:
-      context: ..
-      dockerfile: backends/Dockerfile
-      target: stocks
-    ports:
-      - "8082:8082"
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-      OTLP_ENDPOINT: http://lgtm:4318
-      TRACING_SAMPLING_PROBABILITY: "1.0"
-      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
-    depends_on:
-      - lgtm
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 12
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          memory: 768m
-
-  gateway:
-    # Reverse proxy in front of the three backends: the UI (served by facade) calls /api/visits and
-    # /api/stocks on its own origin, so one entry point has to route by path, the way the Vite dev
-    # server does in development and an ingress would in production. Config in gateway/nginx.conf.
-    profiles: ["apps"]
-    image: nginx:1.30-alpine
-    ports:
-      - "8088:80"     # http://localhost:8088 (8080-8082 are the backends, 8090 is Kafka UI)
-    volumes:
-      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - facade
-      - visitor
-      - stocks
 
 volumes:
   mysql-data:

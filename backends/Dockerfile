@@ -4,8 +4,9 @@
 # The build context is the project root (the Dockerfile needs pom.xml, frontend/ and backends/),
 # and each backend is a named target:
 #   docker build -f backends/Dockerfile --target facade -t fs-web/facade:local .
-# Normally the images are built and started through backends/compose.yaml (Compose profile "apps"):
-#   docker compose -f backends/compose.yaml --profile apps up --build -d
+# Normally the images are built and started through backends/compose.apps.yaml (the project
+# services; it includes compose.yaml, the external services):
+#   docker compose -f backends/compose.apps.yaml up --build -d
 # Design in docs/015-backends-in-containers.md.
 
 # ---------------------------------------------------------------------------------------------
