@@ -4,6 +4,11 @@
 # MySQL/PostgreSQL (JDBC) and OTLP connections itself, so no host/port properties are needed
 # in application.yml. DynamoDB Local is the exception: Boot has no service connection for it,
 # so it uses a fixed host port (see below).
+#
+# Only external services live here. The project's own backends are in compose.apps.yaml, which
+# includes this file, so they are started manually and bring these services up with them:
+#   docker compose -f backends/compose.apps.yaml up --build -d
+# Design in docs/015-backends-in-containers.md.
 
 # Keeps the Compose project name (and container names) the same as when this file
 # was in the project root, so existing containers are reused.
@@ -45,7 +50,8 @@ services:
     # Two client listeners, because a broker tells clients where to reconnect (advertised listener)
     # and that address differs by where the client runs:
     #   PLAINTEXT_HOST  localhost:9092  for the backends on the host (and the Kafka CLI tools)
-    #   PLAINTEXT       kafka:19092     for other containers on the Compose network (kafka-ui)
+    #   PLAINTEXT       kafka:19092     for other containers on the Compose network (kafka-ui, and
+    #                                   the backends when they run as containers, compose.apps.yaml)
     # Setting any KAFKA_* variable switches the image from its built-in single-listener config to
     # these variables, so the whole KRaft config has to be given (adapted from the image's
     # docker/examples/docker-compose-files/single-node/plaintext example).
