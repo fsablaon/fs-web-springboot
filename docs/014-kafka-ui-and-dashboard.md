@@ -98,7 +98,7 @@ Resource attribute `service.name` (`facade` / `visitor`) is promoted to the `ser
 | `backends/grafana/dashboards-provisioning.yaml`       | New: Grafana dashboard provider (folder `fs-web`, 30 s refresh, UI edits allowed)                                                                                                                                          |
 | `backends/grafana/dashboards/kafka-visit-events.json` | New: dashboard `fs-web-kafka-visits` ("Kafka: visit events"), 10 panels, `topic` variable, link to Kafka UI                                                                                                                |
 | `README.md`, `CLAUDE.md`                              | Compose services table / list, Kafka UI URL, dashboard location                                                                                                                                                            |
-| `docs/012-kafka-ui-and-dashboard.md`                  | This file                                                                                                                                                                                                                  |
+| `docs/014-kafka-ui-and-dashboard.md`                  | This file                                                                                                                                                                                                                  |
 
 No changes to any backend or the frontend.
 

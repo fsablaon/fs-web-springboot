@@ -86,7 +86,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Application-side view of the Kafka topics**, from the Micrometer metrics the backends export over OTLP (`kafka.producer.*` / `kafka.consumer.*` client metrics and the `spring.kafka.template` / `spring.kafka.listener` observations). Counts are what *these apps* sent and consumed in the selected time range; records produced by other tools (CLI, Kafka UI) are not included, and a counter restarts with its app. For the broker's own numbers (end offsets, group lag at the broker) use Kafka UI at [localhost:8090](http://localhost:8090). Design: `docs/012-kafka-ui-and-dashboard.md`."
+        "content": "**Application-side view of the Kafka topics**, from the Micrometer metrics the backends export over OTLP (`kafka.producer.*` / `kafka.consumer.*` client metrics and the `spring.kafka.template` / `spring.kafka.listener` observations). Counts are what *these apps* sent and consumed in the selected time range; records produced by other tools (CLI, Kafka UI) are not included, and a counter restarts with its app. For the broker's own numbers (end offsets, group lag at the broker) use Kafka UI at [localhost:8090](http://localhost:8090). Design: `docs/014-kafka-ui-and-dashboard.md`."
       }
     },
     {

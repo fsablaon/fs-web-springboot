@@ -35,7 +35,7 @@ services:
       - "4318"        # OTLP HTTP
     volumes:
       # Project dashboards, provisioned into the "fs-web" folder in Grafana
-      # (docs/012-kafka-ui-and-dashboard.md). Paths are relative to this file. Grafana re-reads
+      # (docs/014-kafka-ui-and-dashboard.md). Paths are relative to this file. Grafana re-reads
       # the JSON files every 30 s, so an edited dashboard shows up without a restart.
       - ./grafana/dashboards-provisioning.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/fs-web.yaml:ro
       - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/fs-web:ro
