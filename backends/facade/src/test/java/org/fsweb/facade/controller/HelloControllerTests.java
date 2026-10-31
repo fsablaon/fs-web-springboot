@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -33,6 +34,13 @@ class HelloControllerTests {
 
     private HelloController controller;
 
+    /** Access token of the signed-in user, as the resource server would pass it in. */
+    private final Jwt jwt = Jwt.withTokenValue("token")
+            .header("alg", "none")
+            .subject("user-id")
+            .claim("preferred_username", "france")
+            .build();
+
     @BeforeEach
     void setUp() {
         VisitEventPublisher publisher = new VisitEventPublisher(kafkaTemplate, new VisitEventProperties(TOPIC, "facade"));
@@ -44,7 +52,7 @@ class HelloControllerTests {
         when(kafkaTemplate.send(eq(TOPIC), anyString(), any(VisitEvent.class)))
                 .thenReturn(CompletableFuture.completedFuture(new SendResult<>(null, null)));
 
-        assertThat(controller.hello("France")).isEqualTo("Hello, France!");
+        assertThat(controller.hello("France", jwt)).isEqualTo("Hello, France!");
 
         ArgumentCaptor<VisitEvent> event = ArgumentCaptor.forClass(VisitEvent.class);
         verify(kafkaTemplate).send(eq(TOPIC), eq("facade"), event.capture());
@@ -55,11 +63,29 @@ class HelloControllerTests {
     }
 
     @Test
+    void helloWithoutNameGreetsSignedInUser() {
+        when(kafkaTemplate.send(eq(TOPIC), anyString(), any(VisitEvent.class)))
+                .thenReturn(CompletableFuture.completedFuture(new SendResult<>(null, null)));
+
+        assertThat(controller.hello(null, jwt)).isEqualTo("Hello, france!");
+        assertThat(controller.hello(" ", jwt)).isEqualTo("Hello, france!");
+    }
+
+    @Test
+    void helloWithoutNameOrUsernameGreetsWorld() {
+        when(kafkaTemplate.send(eq(TOPIC), anyString(), any(VisitEvent.class)))
+                .thenReturn(CompletableFuture.completedFuture(new SendResult<>(null, null)));
+        Jwt noUsername = Jwt.withTokenValue("token").header("alg", "none").subject("client-id").build();
+
+        assertThat(controller.hello(null, noUsername)).isEqualTo("Hello, World!");
+    }
+
+    @Test
     void helloStillAnswersWhenTheSendFails() {
         when(kafkaTemplate.send(eq(TOPIC), anyString(), any(VisitEvent.class)))
                 .thenReturn(CompletableFuture.failedFuture(new KafkaException("broker down")));
 
-        assertThat(controller.hello("World")).isEqualTo("Hello, World!");
+        assertThat(controller.hello("World", jwt)).isEqualTo("Hello, World!");
     }
 
     @Test
@@ -67,6 +93,6 @@ class HelloControllerTests {
         when(kafkaTemplate.send(eq(TOPIC), anyString(), any(VisitEvent.class)))
                 .thenThrow(new KafkaException("no producer"));
 
-        assertThat(controller.hello("World")).isEqualTo("Hello, World!");
+        assertThat(controller.hello("World", jwt)).isEqualTo("Hello, World!");
     }
 }

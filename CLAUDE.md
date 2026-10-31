@@ -12,7 +12,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 |-----------------|--------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Frontend        | `frontend/`        | `fs-web-frontend` | Builds the React app; jar holds `static/**`                                                                                                                  |
 | Backends parent | `backends/`        | `fs-web-backends` | Parent + aggregator for all backends (packaging `pom`)                                                                                                       |
-| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`, `/api/overview`; serves the frontend jar; publishes visit events to Kafka; calls `visitor` and `stocks` over HTTP |
+| Facade backend  | `backends/facade`  | `facade`          | Spring Boot app (port 8080): `/api/hello`, `/api/overview`, `/api/me` (Keycloak JWT); serves the frontend jar; publishes visit events to Kafka; calls `visitor` and `stocks` over HTTP |
 | Visitor backend | `backends/visitor` | `visitor`         | Spring Boot app (port 8081): `/api/visits` visit counter in Valkey; consumes visit events from Kafka                                                         |
 | Stocks backend  | `backends/stocks`  | `stocks`          | Spring Boot app (port 8082): `/api/stocks` in-memory stock list                                                                                              |
 
@@ -20,7 +20,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - `backends/pom.xml`: backend-only settings (Lombok annotation processor, `spring-boot-maven-plugin` config, OpenTelemetry appender version, `fs-web-frontend` version) and shared backend dependencies (Lombok, `spring-boot-starter-test`)
 - New backends go in `backends/<name>/`, use `fs-web-backends` as parent and are listed in `backends/pom.xml` `<modules>`; steps in `docs/004-multi-module-backends.md`
 
-**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade publishes a `VisitEvent` (JSON) to the Kafka topic `fs-web.visits` through `VisitEventPublisher` (`KafkaTemplate`); the visitor backend's `VisitEventListener` (`@KafkaListener`, group `visitor`) consumes it and increments the counter. The topic is created by the visitor's `KafkaTopicConfig` (`NewTopic` bean → Boot's `KafkaAdmin` at startup, idempotent); the dev broker's auto-create is the fallback if the facade publishes first. Design in `docs/011-kafka-visit-events.md` (replaced the REST call of `docs/008-hello-counts-visits.md`). `GET /api/overview` in facade reads the visit count (`GET /api/visits`) and the stock list (`GET /api/stocks`) over HTTP; the facade's HTTP clients are Spring Boot HTTP service client groups: one `@HttpExchange` interface per downstream in `client/`, registered with `@ImportHttpServices(group = ...)` in `config/HttpServiceClientsConfig.java`, settings in `spring.http.serviceclient.<group>.*` (defaults in `spring.http.clients.*`), failure policy in the `*Client` wrapper; design in `docs/013-facade-http-clients.md`. Shared settings:
+**Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade publishes a `VisitEvent` (JSON) to the Kafka topic `fs-web.visits` through `VisitEventPublisher` (`KafkaTemplate`); the visitor backend's `VisitEventListener` (`@KafkaListener`, group `visitor`) consumes it and increments the counter. The topic is created by the visitor's `KafkaTopicConfig` (`NewTopic` bean → Boot's `KafkaAdmin` at startup, idempotent); the dev broker's auto-create is the fallback if the facade publishes first. Design in `docs/011-kafka-visit-events.md` (replaced the REST call of `docs/008-hello-counts-visits.md`). `GET /api/overview` in facade reads the visit count (`GET /api/visits`) and the stock list (`GET /api/stocks`) over HTTP; the facade's HTTP clients are Spring Boot HTTP service client groups: one `@HttpExchange` interface per downstream in `client/`, registered with `@ImportHttpServices(group = ...)` in `config/HttpServiceClientsConfig.java`, settings in `spring.http.serviceclient.<group>.*` (defaults in `spring.http.clients.*`), failure policy in the `*Client` wrapper; design in `docs/013-facade-http-clients.md`. Facade is an OAuth2 resource server: `/api/**` (including `/api/overview`) needs a Keycloak access token (`Authorization: Bearer`, `aud=facade`, realm roles mapped to `ROLE_*`), except the public `GET /api/auth/config`; `/api/visits` and `/api/stocks` are not protected yet, and the facade's HTTP clients call them without a token (design in `docs/014-keycloak-oauth.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
 - **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/012-jdk25-toolchain.md`
 - **Spring Boot Version**: 4.1.2
@@ -36,8 +36,9 @@ This is a full-stack web application with Spring Boot backend and React frontend
 - **Location**: `frontend/` directory
 
 **Local services (Docker Compose):**
-- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out), `lgtm` (Grafana OTel LGTM stack), `kafka` (KRaft, fixed port 9092), `mysql` (MySQL 9.7 LTS, db/user/password `fsweb`), `postgres` (PostgreSQL 18, db/user/password `fsweb`) and `dynamodb` (DynamoDB Local, fixed port 8000, `-sharedDb -inMemory`)
+- `backends/compose.yaml`, shared by all backends (Compose project name `fs-web-springboot`): `valkey` (Valkey 9, Redis-compatible; the `redis` service is commented out), `lgtm` (Grafana OTel LGTM stack), `kafka` (KRaft, fixed port 9092), `mysql` (MySQL 9.7 LTS, db/user/password `fsweb`), `postgres` (PostgreSQL 18, db/user/password `fsweb`), `dynamodb` (DynamoDB Local, fixed port 8000, `-sharedDb -inMemory`) and `keycloak` (Keycloak 26 `start-dev`, fixed port 8180, admin `admin`/`admin`, realm `fsweb` imported from `backends/keycloak/fsweb-realm.json`: public client `fs-web-ui`, users `france`/`password` (roles `user`, `admin`) and `alice`/`password` (role `user`))
 - `mysql` and `postgres` both produce `JdbcConnectionDetails`; a backend with a DataSource must label the one it does not use with `org.springframework.boot.ignore: true` (or Boot fails with two candidates). DynamoDB Local has no Boot service connection: configure the endpoint `http://localhost:8000` explicitly. Details in `docs/008-mysql-postgres-dynamodb-compose.md`
+- Keycloak has no Boot service connection either: facade sets `spring.security.oauth2.resourceserver.jwt.issuer-uri: http://localhost:8180/realms/fsweb` (`KEYCLOAK_ISSUER_URI` in `prod`); the browser and facade both use host port 8180 so the token `iss` matches. `--import-realm` skips an existing realm: re-create the container to re-import. Admin console `http://localhost:8180`
 - Backends set `spring.docker.compose.file: backends/compose.yaml`; the path is relative to the project root, which is the working directory for `spring-boot:run` (set in `backends/pom.xml`) and IntelliJ's default
 - `spring-boot-docker-compose` (optional dependency) starts them on `./mvnw spring-boot:run -pl backends/<name>` (all backends share the containers) and creates the Redis, Kafka (`spring.kafka.bootstrap-servers`) and OTLP connection details automatically (`valkey` has the label `org.springframework.boot.service-connection: redis` because Boot only matches `redis` image names); do not hardcode hosts/ports for dev
 - Grafana UI: `http://localhost:3001` (host port 3000 is the Vite dev server)
@@ -54,7 +55,8 @@ For development with hot reload:
 3. **Start visitor backend** (separate terminal): `./mvnw spring-boot:run -pl backends/visitor` (runs on port 8081)
 4. **Start stocks backend** (separate terminal): `./mvnw spring-boot:run -pl backends/stocks` (runs on port 8082)
 5. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
-6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080)
+6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080); **Sign in** redirects to Keycloak (`france` / `password`)
+7. API test token (direct access grants, dev only): `curl -s -d client_id=fs-web-ui -d grant_type=password -d username=france -d password=password http://localhost:8180/realms/fsweb/protocol/openid-connect/token | jq -r .access_token`
 
 Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Design in `docs/010-dev-start-scripts.md`.
 
@@ -88,7 +90,8 @@ fs-web-springboot/
 ├── pom.xml                              # Parent + aggregator POM (packaging pom)
 ├── backends/
 │   ├── pom.xml                          # Backend parent + aggregator (fs-web-backends)
-│   ├── compose.yaml                     # Valkey, LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local (dev), shared by all backends
+│   ├── compose.yaml                     # Valkey, LGTM, Kafka, MySQL, PostgreSQL, DynamoDB Local, Keycloak (dev), shared by all backends
+│   ├── keycloak/fsweb-realm.json        # Keycloak realm import: client fs-web-ui, roles, dev users
 │   ├── facade/                          # Facade backend module (artifactId facade, port 8080)
 │   │   ├── pom.xml
 │   │   └── src/
@@ -97,22 +100,29 @@ fs-web-springboot/
 │   │       │   │   ├── FacadeApplication.java   # Main Spring Boot application
 │   │       │   │   ├── client/                  # VisitorApi, StocksApi (@HttpExchange), VisitorClient, StocksClient (failure policy), VisitCount, Stock
 │   │       │   │   ├── config/                  # Configuration classes
+│   │       │   │   │   ├── SecurityConfig.java  # OAuth2 resource server: /api/** needs a JWT, stateless
+│   │       │   │   │   ├── AuthProperties.java  # facade.auth.* (issuer-uri, client-id) for /api/auth/config
 │   │       │   │   │   ├── WebConfig.java       # SPA routing configuration
 │   │       │   │   │   ├── HttpServiceClientsConfig.java  # @ImportHttpServices groups: visitor, stocks
 │   │       │   │   │   └── OpenTelemetryLogbackConfig.java  # Attaches Logback OTEL appender to the SDK
 │   │       │   │   ├── controller/              # REST API controllers
-│   │       │   │   │   ├── HelloController.java
-│   │       │   │   │   └── OverviewController.java  # /api/overview: visit count + stock list via the HTTP clients
-│   │       │   │   ├── dto/                     # Overview
-│   │       │   │   └── event/                   # VisitEvent, VisitEventProperties, VisitEventPublisher (KafkaTemplate -> fs-web.visits)
+│   │       │   │   │   ├── HelloController.java     # /api/hello (defaults to the token's username)
+│   │       │   │   │   ├── OverviewController.java  # /api/overview: visit count + stock list via the HTTP clients
+│   │       │   │   │   ├── MeController.java        # /api/me (user and roles from the token)
+│   │       │   │   │   └── AuthConfigController.java  # /api/auth/config (public)
+│   │       │   │   ├── dto/                     # Overview, AuthConfig, UserInfo
+│   │       │   │   ├── event/                   # VisitEvent, VisitEventProperties, VisitEventPublisher (KafkaTemplate -> fs-web.visits)
+│   │       │   │   └── security/                # KeycloakRealmRoleConverter (realm_access.roles -> ROLE_*)
 │   │       │   └── resources/
-│   │       │       ├── application.yml          # Backend configuration (Kafka producer, facade.visits.topic, spring.http.serviceclient.*)
-│   │       │       ├── application-prod.yml     # Production Kafka brokers, VISITOR_URL/STOCKS_URL and OTLP settings (env vars)
+│   │       │       ├── application.yml          # Backend configuration (Kafka producer, facade.visits.topic, spring.http.serviceclient.*, Keycloak issuer-uri)
+│   │       │       ├── application-prod.yml     # Production Kafka brokers, VISITOR_URL/STOCKS_URL, Keycloak and OTLP settings (env vars)
 │   │       │       └── logback-spring.xml       # Console + OpenTelemetry log appenders
 │   │       └── test/
 │   │           └── java/org/fsweb/facade/
 │   │               ├── FacadeApplicationTests.java
 │   │               ├── config/HttpServiceClientsConfigTests.java  # visitor and stocks groups bind from application.yml
+│   │               ├── config/SecurityConfigTests.java       # MockMvc + mocked JwtDecoder: 401/200, roles, public paths
+│   │               ├── security/KeycloakRealmRoleConverterTest.java
 │   │               ├── controller/HelloControllerTests.java  # Mock KafkaTemplate: one event per greeting, Kafka failures swallowed
 │   │               ├── controller/OverviewControllerTests.java  # Two MockRestServiceServers; each downstream may be down
 │   │               └── event/VisitEventPublisherTests.java   # @EmbeddedKafka: JSON wire format, key, no type header
@@ -163,9 +173,10 @@ fs-web-springboot/
 ├── frontend/                            # Frontend module (artifactId fs-web-frontend)
 │   ├── pom.xml                          # Runs npm install / npm run build via frontend-maven-plugin
 │   ├── src/
-│   │   ├── App.tsx                      # Main React component
+│   │   ├── auth/                        # authConfig.ts (oidc-client-ts settings from /api/auth/config), apiFetch.ts (Bearer header)
+│   │   ├── App.tsx                      # Main React component (sign in/out with react-oidc-context)
 │   │   ├── App.module.css               # Component styles
-│   │   ├── main.tsx                     # React entry point
+│   │   ├── main.tsx                     # React entry point: loads /api/auth/config, wraps App in AuthProvider
 │   │   └── index.css                    # Global styles
 │   ├── vite.config.ts                   # Vite configuration (proxy setup)
 │   ├── tsconfig.json                    # TypeScript configuration
@@ -210,7 +221,8 @@ fs-web-springboot/
 
 ### API Conventions
 - All backend API endpoints are prefixed with `/api`
-- Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`)
+- Frontend makes relative fetch calls (e.g., `fetch('/api/hello')`); calls to facade send the access token via `apiFetch(url, auth.user?.access_token)`
+- Sign-in: the browser talks to Keycloak directly (`http://localhost:8180`, Authorization Code + PKCE via `oidc-client-ts`/`react-oidc-context`), not through the Vite proxy; the client's redirect URIs and web origins allow `http://localhost:3000` and `http://localhost:8080`
 - This works in both dev (proxied) and production (same origin)
 - Endpoint ownership: `/api/visits` → `visitor` (8081); `/api/stocks` → `stocks` (8082); everything else → `facade` (8080). `/api/hello` does not call the visitor backend over HTTP: it publishes visit events to the Kafka topic `fs-web.visits` (`facade.visits.topic`; brokers from Docker Compose in dev, `KAFKA_BOOTSTRAP_SERVERS` in the `prod` profile) and the visitor backend consumes them (`visitor.visits.topic`, group `visitor.visits.group-id`). Both backends have their own `VisitEvent` record with the same JSON fields; records carry no Java type header. `/api/overview` does call `visitor` and `stocks` over HTTP, at `spring.http.serviceclient.{visitor,stocks}.base-url` (`VISITOR_URL` / `STOCKS_URL` in the `prod` profile), not through the reverse proxy. In dev, `frontend/vite.config.ts` has one proxy entry per owner (longest prefix first). In production the facade JAR serves the UI, so a reverse proxy in front of the JARs must route `/api/visits` to the visitor backend and `/api/stocks` to the stocks backend.
 

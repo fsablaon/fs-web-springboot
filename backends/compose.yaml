@@ -2,8 +2,8 @@
 # Started automatically by spring-boot-docker-compose when running `mvn spring-boot:run`.
 # Spring Boot reads the mapped ports from Docker and creates the Redis (Valkey), Kafka,
 # MySQL/PostgreSQL (JDBC) and OTLP connections itself, so no host/port properties are needed
-# in application.yml. DynamoDB Local is the exception: Boot has no service connection for it,
-# so it uses a fixed host port (see below).
+# in application.yml. DynamoDB Local and Keycloak are the exceptions: Boot has no service
+# connection for them, so they use fixed host ports (see below).
 
 # Keeps the Compose project name (and container names) the same as when this file
 # was in the project root, so existing containers are reused.
@@ -93,6 +93,31 @@ services:
     working_dir: /home/dynamodblocal
     ports:
       - "8000:8000"   # fixed host port: http://localhost:8000
+
+  keycloak:
+    # OpenID Connect provider (OAuth2 authorization server) for the UI and the facade backend.
+    # Spring Boot has no Docker Compose service connection for Keycloak, so the host port is
+    # fixed (like dynamodb) and the issuer URI is set explicitly in the facade's application.yml:
+    # spring.security.oauth2.resourceserver.jwt.issuer-uri: http://localhost:8180/realms/fsweb
+    # The browser and the facade both reach Keycloak on this host port, so the "iss" claim in
+    # the tokens matches the configured issuer URI.
+    # start-dev: HTTP, no hostname checks, embedded H2 database (data survives container
+    # restarts, not `docker compose down`). Dev-only admin credentials.
+    # Admin console: http://localhost:8180 (admin / admin)
+    # Realm "fsweb" (client fs-web-ui, users france/alice) is imported from
+    # backends/keycloak/fsweb-realm.json on start; --import-realm skips a realm that already
+    # exists, so edit the realm in the console or re-create the container to re-import.
+    # See docs/014-keycloak-oauth.md.
+    image: quay.io/keycloak/keycloak:26.8.1
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8180:8080"   # fixed host port: http://localhost:8180 (8080 is the facade backend)
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro   # relative to this file: backends/keycloak/
 
 volumes:
   mysql-data:

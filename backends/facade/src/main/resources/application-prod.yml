@@ -1,7 +1,7 @@
 # Production profile: activate with --spring.profiles.active=prod
 # Docker Compose support is not included in the packaged JAR, so the Kafka brokers, the
 # downstream service URLs and the OTLP endpoint must be set explicitly (environment
-# variables shown below).
+# variables shown below). Keycloak: KEYCLOAK_ISSUER_URI, OIDC_AUDIENCE, OIDC_CLIENT_ID.
 spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -11,6 +11,18 @@ spring:
         base-url: ${VISITOR_URL:http://localhost:8081}
       stocks:
         base-url: ${STOCKS_URL:http://localhost:8082}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Must equal the "iss" claim, i.e. the Keycloak URL the browser uses (KC_HOSTNAME)
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/fsweb}
+          audiences: ${OIDC_AUDIENCE:facade}
+
+facade:
+  auth:
+    # issuer-uri follows spring.security.oauth2.resourceserver.jwt.issuer-uri (application.yml)
+    client-id: ${OIDC_CLIENT_ID:fs-web-ui}
 
 management:
   tracing:
