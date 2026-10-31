@@ -32,6 +32,10 @@
         <java.version>25</java.version>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
+        <!-- JDK used to compile, test and spring-boot:run, whatever JDK Maven itself runs on.
+             Found by maven-toolchains-plugin (JAVA_HOME, PATH, ~/.jdks, SDKMAN, ...); no toolchains.xml needed. -->
+        <toolchain.jdk.version>[25,26)</toolchain.jdk.version>
+        <maven-toolchains-plugin.version>3.3.0</maven-toolchains-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v26.13.0</node.version>
@@ -50,6 +54,21 @@
         </pluginManagement>
 
         <plugins>
+            <!-- Selects a JDK 25 toolchain for every module (bound to validate). The compiler,
+                 surefire and spring-boot:run/start use it; see docs/011-dev-scripts-java25.md -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>${maven-toolchains-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>select-jdk-toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- No application here: ./mvnw spring-boot:run from the root skips this POM.
                  inherited=false keeps the skip out of the modules. -->
             <plugin>

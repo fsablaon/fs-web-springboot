@@ -11,13 +11,6 @@ Servers started (from the project root):
   stocks    mvnw.cmd spring-boot:run -pl backends/stocks    port 8082
   frontend  npm run dev (in frontend\)                      port 3000
 
-The backends are built and run with JDK 25 (the project's java.version). The
-JDK is taken from, in order: -JavaHome, $env:JAVA_HOME (if it is 25), java.exe
-on PATH (if it is 25), then common install locations (%USERPROFILE%\.jdks,
-Program Files\Amazon Corretto, Java, Eclipse Adoptium, Microsoft, Zulu,
-BellSoft, scoop). It is set as JAVA_HOME for the server windows, so mvnw.cmd
-uses it. The script stops with a message if no JDK 25 is found.
-
 Every server window is put into a Windows job object with KILL_ON_JOB_CLOSE, so
 the whole process tree (cmd -> mvnw -> java, cmd -> npm -> node) dies when this
 script ends for any reason: Ctrl+C in this window, closing this window, or the
@@ -30,124 +23,18 @@ backends and intentionally keep running: `docker compose -p fs-web-springboot do
 .PARAMETER NoFrontend
 Start only the backends.
 
-.PARAMETER JavaHome
-Home directory of the JDK 25 to use (overrides JAVA_HOME and auto-detection).
-
 .EXAMPLE
 scripts\dev.cmd
 .EXAMPLE
 powershell -ExecutionPolicy Bypass -File scripts\dev.ps1 -NoFrontend
-.EXAMPLE
-scripts\dev.cmd -JavaHome "C:\Program Files\Amazon Corretto\jdk25.0.1_8"
 #>
 [CmdletBinding()]
 param(
-    [switch]$NoFrontend,
-    [string]$JavaHome
+    [switch]$NoFrontend
 )
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$requiredJava = 25
-
-# ---------------------------------------------------------------------------
-# JDK selection
-# ---------------------------------------------------------------------------
-
-# Feature version (25 for 25.0.1, 1 for 1.8.0) of the JDK in $dir, or $null if
-# $dir is not a JDK home (needs bin\javac.exe and the `release` file).
-function Get-JdkVersion([string]$dir) {
-    if (-not $dir) { return $null }
-    $release = Join-Path $dir 'release'
-    if (-not (Test-Path (Join-Path $dir 'bin\javac.exe')) -or -not (Test-Path $release)) { return $null }
-    $m = Select-String -Path $release -Pattern '^JAVA_VERSION="(\d+)' | Select-Object -First 1
-    if ($m) { return [int]$m.Matches[0].Groups[1].Value }
-    return $null
-}
-
-function Test-RequiredJdk([string]$dir) {
-    return (Get-JdkVersion $dir) -eq $requiredJava
-}
-
-# Home directory of the java.exe on PATH, or $null. The Oracle "javapath" shim
-# directory is not a JDK home and is skipped by the `release` check.
-function Get-PathJavaHome {
-    $cmd = Get-Command java.exe -ErrorAction SilentlyContinue
-    if (-not $cmd) { return $null }
-    return (Split-Path (Split-Path $cmd.Source -Parent) -Parent)
-}
-
-# Directories that vendors and tools install JDKs under; every subdirectory is
-# checked with Get-JdkVersion, so vendor-specific names do not matter.
-function Join-IfSet([string]$base, [string]$child) {
-    if ($base) { Join-Path $base $child } else { $null }
-}
-$jdkSearchRoots = @(
-    (Join-IfSet $env:USERPROFILE '.jdks')                              # IntelliJ IDEA downloads
-    (Join-IfSet $env:ProgramFiles 'Amazon Corretto')
-    (Join-IfSet $env:ProgramFiles 'Java')
-    (Join-IfSet $env:ProgramFiles 'Eclipse Adoptium')
-    (Join-IfSet $env:ProgramFiles 'Microsoft')
-    (Join-IfSet $env:ProgramFiles 'Zulu')
-    (Join-IfSet $env:ProgramFiles 'BellSoft')
-    (Join-IfSet $env:LOCALAPPDATA 'Programs\Eclipse Adoptium')
-    (Join-IfSet $env:USERPROFILE 'scoop\apps')
-) | Where-Object { $_ -and (Test-Path $_) }
-
-function Find-InstalledJdks {
-    foreach ($rootDir in $jdkSearchRoots) {
-        Get-ChildItem -Path $rootDir -Directory -ErrorAction SilentlyContinue |
-            Sort-Object Name -Descending |
-            ForEach-Object {
-                # scoop keeps the active version in <app>\current
-                $candidates = @($_.FullName, (Join-Path $_.FullName 'current'))
-                foreach ($c in $candidates) { if (Test-RequiredJdk $c) { $c; break } }
-            }
-    }
-}
-
-function Select-Jdk {
-    if ($JavaHome) {
-        if (Test-RequiredJdk $JavaHome) { return (Resolve-Path $JavaHome).Path }
-        $found = Get-JdkVersion $JavaHome
-        if ($null -eq $found) { $found = 'no JDK' }
-        throw "-JavaHome $JavaHome is not a JDK $requiredJava (found: $found)"
-    }
-    if ($env:JAVA_HOME) {
-        if (Test-RequiredJdk $env:JAVA_HOME) { return $env:JAVA_HOME }
-        $found = Get-JdkVersion $env:JAVA_HOME
-        if ($null -eq $found) { $found = '?' }
-        Write-Host "[dev] JAVA_HOME=$env:JAVA_HOME is JDK $found, not $requiredJava; looking for a JDK $requiredJava elsewhere"
-    }
-    $pathJdk = Get-PathJavaHome
-    if (Test-RequiredJdk $pathJdk) { return $pathJdk }
-    $installed = @(Find-InstalledJdks)
-    if ($installed.Count -gt 0) { return $installed[0] }
-
-    $roots = ($jdkSearchRoots | ForEach-Object { "[dev]   $_" }) -join "`n"
-    throw @"
-no JDK $requiredJava found. Checked -JavaHome, JAVA_HOME, java.exe on PATH and:
-$roots
-[dev] Install JDK $requiredJava, or point at one: scripts\dev.cmd -JavaHome <dir>  (or set JAVA_HOME=<dir>)
-"@
-}
-
-try {
-    $jdk = Select-Jdk
-}
-catch {
-    Write-Host "[dev] $($_.Exception.Message)"
-    exit 1
-}
-$env:JAVA_HOME = $jdk                       # inherited by the server windows; mvnw.cmd uses it
-$env:Path = "$jdk\bin;$env:Path"
-# Version details from the `release` file (java -version prints to stderr, which
-# $ErrorActionPreference = 'Stop' turns into an error under 2>&1 in PowerShell 5.1).
-$releaseInfo = @{}
-Get-Content (Join-Path $jdk 'release') | ForEach-Object {
-    if ($_ -match '^(\w+)="?([^"]*)"?$') { $releaseInfo[$matches[1]] = $matches[2] }
-}
-Write-Host "[dev] using JDK ${requiredJava}: $jdk ($($releaseInfo['IMPLEMENTOR']) $($releaseInfo['JAVA_VERSION']))"
 
 # ---------------------------------------------------------------------------
 # Job object: every process assigned to it (and their children) is terminated

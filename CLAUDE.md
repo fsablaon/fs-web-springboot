@@ -22,7 +22,7 @@ This is a full-stack web application with Spring Boot backend and React frontend
 
 **Backends:** `backends/facade` (base package `org.fsweb.facade`, main class `FacadeApplication`, port 8080), `backends/visitor` (base package `org.facade.visitor`, main class `VisitorApplication`, port 8081, owns the visit counter; design in `docs/007-visitor-service.md`) and `backends/stocks` (base package `org.fsweb.stocks`, main class `StocksApplication`, port 8082, owns `/api/stocks`, in-memory for now; design in `docs/009-stocks-service.md`). Each `/api/hello` call in facade records a visit through `VisitorClient` (`POST {facade.visitor.base-url}/api/visits`, RestClient; design in `docs/008-hello-counts-visits.md`). Shared settings:
 - **Base Package**: `org.fsweb.<backend>`
-- **Java Version**: 25
+- **Java Version**: 25. The root `pom.xml` runs `maven-toolchains-plugin:select-jdk-toolchain` (`toolchain.jdk.version` `[25,26)`), so compile, tests and `spring-boot:run` use a JDK 25 found on the machine even when Maven runs on another JDK (17+); the build stops at `validate` if none is found. Details in `docs/011-jdk25-toolchain.md`
 - **Spring Boot Version**: 4.1.2
 - **Spring Framework Version**: 7.0
 - **Configuration**: Uses `application.yml` for configuration
@@ -56,7 +56,7 @@ For development with hot reload:
 5. **Start frontend** (separate terminal): `cd frontend && npm run dev` (runs on port 3000)
 6. Access the app at `http://localhost:3000` (Vite proxies `/api/visits` to 8081, `/api/stocks` to 8082 and other `/api/*` calls to 8080)
 
-Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Both select a JDK 25 for the backends (`--java-home` / `-JavaHome`, else `JAVA_HOME`, else `java` on `PATH`, else common install locations) and exit with a message if none is found. Design in `docs/010-dev-start-scripts.md`; JDK selection in `docs/011-dev-scripts-java25.md`.
+Steps 2–5 in one command: `scripts/dev.sh` (Linux/macOS/WSL) or `scripts\dev.cmd` (Windows). Both stop every server when the script is stopped (Ctrl+C, killed, window closed); `dev.sh` also stops the rest when one server exits. `--no-frontend` / `-NoFrontend` skips Vite. Design in `docs/010-dev-start-scripts.md`.
 
 ### Production Build
 - **Full build**: `./mvnw clean install` (builds the frontend module, then each backend; the facade backend JAR includes the frontend jar)
@@ -214,4 +214,5 @@ fs-web-springboot/
 
 # Verify changes
 - Always run a `mvn clean install` or `./mvnw.cmd clean install` (windows)
+- In the Claude desktop app's linked Linux VM (no JDK 25 there): prefix Maven commands with `. .vm/env.sh &&` (JDK 25, proxy and Maven cache in the gitignored `.vm/`, see `.vm/README.md`). VM commands are killed after about 3 minutes, so build one module at a time with `-pl` if needed
 - Run the backend app `./mvnw spring-boot:run`
