@@ -54,6 +54,16 @@ spring:
         # GET /api/stocks for /api/overview; a real quote source would be slower than the counter
         base-url: http://localhost:8082
         read-timeout: 3s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keycloak realm "fsweb" (fixed host port 8180, see backends/compose.yaml). Boot reads
+          # <issuer-uri>/.well-known/openid-configuration on the first request, not at startup,
+          # so the app and the tests start without Keycloak running.
+          issuer-uri: http://localhost:8180/realms/fsweb
+          # Tokens must carry aud=facade (added by the audience mapper on client fs-web-ui)
+          audiences: facade
 
 server:
   port: 8080
@@ -63,6 +73,10 @@ facade:
     # Each /api/hello call publishes one VisitEvent to this topic; the visitor backend consumes it
     topic: fs-web.visits
     source: facade
+  auth:
+    # Returned by GET /api/auth/config so the UI does not hard-code the issuer or client id
+    issuer-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}
+    client-id: fs-web-ui
 
 management:
   endpoints:

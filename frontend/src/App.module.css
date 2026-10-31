@@ -128,3 +128,36 @@
   border-radius: 4px;
   font-family: 'Courier New', monospace;
 }
+
+.authBar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin: -20px -20px 20px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.authStatus {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkButton {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #667eea;
+  background: transparent;
+  border: 1px solid #667eea;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: white;
+  background: #667eea;
+}

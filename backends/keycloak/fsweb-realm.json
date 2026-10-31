@@ -1,0 +1,74 @@
+{
+  "realm": "fsweb",
+  "displayName": "fs-web-springboot (dev)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Signed-in user of the fs-web app" },
+      { "name": "admin", "description": "Administrator of the fs-web app" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fs-web-ui",
+      "name": "fs-web React UI",
+      "description": "Public SPA client: Authorization Code + PKCE (S256). Direct access grants are on for curl testing in dev only.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:8080"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "facade-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "facade",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "france",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "France",
+      "lastName": "Dev",
+      "email": "france@example.com",
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["user", "admin"]
+    },
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Dev",
+      "email": "alice@example.com",
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["user"]
+    }
+  ]
+}

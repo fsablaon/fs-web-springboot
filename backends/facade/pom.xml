@@ -13,7 +13,7 @@
 
     <artifactId>facade</artifactId>
     <name>facade</name>
-    <description>Facade backend: REST API (/api/hello), OpenTelemetry; serves the React frontend. Each /api/hello call publishes a visit event to Kafka for the visitor backend.</description>
+    <description>Facade backend: REST API (/api/hello, /api/me), OAuth2 resource server (Keycloak JWT), OpenTelemetry; serves the React frontend. Each /api/hello call publishes a visit event to Kafka for the visitor backend.</description>
 
     <dependencies>
         <!-- React app (static/**), served by WebConfig -->
@@ -40,6 +40,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+
+        <!-- Spring Security OAuth2 resource server: /api/** needs a Keycloak-issued JWT (bearer token) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
         </dependency>
 
         <!-- Actuator: health, info and metrics endpoints -->
@@ -71,6 +77,18 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Test support: jwt() request post-processor (spring-security-test) and MockMvc -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
